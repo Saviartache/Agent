@@ -1,4 +1,4 @@
-//! Предметы сценок на земле: мяч, яблоко, жёлудь, кожура, кучка, яйцо, монетки, ведро.
+//! Предметы сценок на земле: мяч, яблоко, жёлудь, кожура, кучка, яйцо, монетки, ведро, бумажки.
 //! Простая физика: высота с тяжестью и отскоком, трение о землю, отскок от краёв.
 //! Предметы не карточки: мышь их не ловит, приложению о них не сообщают.
 
@@ -35,6 +35,8 @@ pub enum PropKind {
     /// Нарисованная стрелочка курсора: настоящий курсор не трогаем.
     Arrow,
     Butterfly,
+    /// Скомканная бумажка или записка енота.
+    Paper,
 }
 
 impl PropKind {
@@ -64,6 +66,7 @@ impl PropKind {
             Self::Feather => 5.0,
             Self::Arrow => 8.0,
             Self::Butterfly => 6.0,
+            Self::Paper => 4.5,
         }
     }
 
@@ -76,9 +79,9 @@ impl PropKind {
         }
     }
 
-    /// Не падает камнем: парит вниз (перо) или держится в воздухе (бабочка).
+    /// Не падает камнем: парит вниз (перо, бумажка) или держится в воздухе (бабочка).
     fn drifts(self) -> bool {
-        matches!(self, Self::Feather | Self::Butterfly)
+        matches!(self, Self::Feather | Self::Butterfly | Self::Paper)
     }
 }
 
@@ -223,7 +226,7 @@ fn fly(prop: &mut Prop, dt: f32, gravity: f32, ui: f32) {
         (prop.vel, prop.vz, prop.spin) = (Vec2::ZERO, 0.0, 0.0);
     }
     if prop.kind.drifts() {
-        if prop.kind == PropKind::Feather && prop.z > 0.0 {
+        if prop.kind != PropKind::Butterfly && prop.z > 0.0 {
             prop.vz = (prop.vz - gravity * dt).max(-DRIFT_FALL * ui);
         }
     } else if prop.z > 0.0 || prop.vz > 0.0 {

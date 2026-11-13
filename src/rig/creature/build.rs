@@ -1,4 +1,4 @@
-//! Сложение вида: чем гусь отличается от свинки при общем скелете.
+//! Сложение вида: чем гусь, свинка и енот отличаются при общем скелете.
 
 use super::feet::Stance;
 use crate::math::Vec2;
@@ -36,6 +36,8 @@ pub struct Build {
     /// Ноги в руках висят под телом: разнос от оси и расстояние вниз от центра.
     pub dangle_side: f32,
     pub dangle_down: f32,
+    /// Крадётся: на ходу тело ниже стойки на столько.
+    pub prowl: f32,
 }
 
 const GOOSE: Build = Build {
@@ -60,6 +62,7 @@ const GOOSE: Build = Build {
     fore: None,
     dangle_side: 4.5,
     dangle_down: 12.0,
+    prowl: 0.0,
 };
 
 /// Копилка на коротких ногах: голова почти с тело и сидит на нём без шеи.
@@ -88,6 +91,36 @@ const PIG: Build = Build {
     }),
     dangle_side: 5.0,
     dangle_down: 11.0,
+    prowl: 0.0,
+};
+
+/// Длинное низкое тело с горбатой спиной, острая морда на короткой шее; крадётся.
+const RACCOON: Build = Build {
+    body_radii: [12.0, 8.0, 7.0],
+    stand_z: 10.4,
+    // Зад выше плеч
+    body_pitch: -0.12,
+    neck_base: [9.5, 2.5],
+    neck_rest: [5.5, 4.5],
+    curl_rest: [10.0, 3.0, 2.5],
+    neck_slack: 0.5,
+    sidesteps: false,
+    head_turn: 1.1,
+    head_radius: 6.8,
+    head_pitch: -0.05,
+    muzzle: 5.5,
+    print: 1.7,
+    hind: Pair {
+        along: -8.0,
+        side: 3.8,
+    },
+    fore: Some(Pair {
+        along: 8.0,
+        side: 4.6,
+    }),
+    dangle_side: 4.5,
+    dangle_down: 10.0,
+    prowl: 3.5,
 };
 
 impl RigKind {
@@ -100,6 +133,7 @@ impl RigKind {
         match self {
             Self::Goose => &GOOSE,
             Self::Pig => &PIG,
+            Self::Raccoon => &RACCOON,
         }
     }
 }

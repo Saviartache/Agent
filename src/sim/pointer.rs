@@ -76,6 +76,7 @@ impl Sim {
         };
         if !press.dragging {
             self.brain.push(Directive::Click);
+            self.clicked = true;
             push_event(&mut self.events, AgentEvent::Clicked);
             return;
         }

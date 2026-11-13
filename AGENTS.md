@@ -1,6 +1,6 @@
 # ui-agent — памятка агенту
 
-Персонаж рабочего стола Windows (свинка или гусь) и предметы вокруг него. Прежде чем
+Персонаж рабочего стола Windows (свинка, гусь или енот) и предметы вокруг него. Прежде чем
 что-либо менять, прочитай две заметки в `docs/`:
 
 - [Персонаж рабочего стола](docs/character.md) — архитектура, карта модулей,
@@ -20,11 +20,11 @@
   в `platform`, поток — в `runtime`; `unsafe` только в `platform`.
 - Новый вид рисуется через `render/shadow.rs` (тень) и `render/pixel.rs` (мозаика),
   своих теней и стилей не заводить.
-- Виды тела (`RigKind`: `goose`, `pig`) делят один скелет `rig/creature`; вид — это
-  сложение в `rig/creature/build.rs` и свой рисовальщик в `render/` (`goose.rs`, `pig.rs`),
+- Виды тела (`RigKind`: `goose`, `pig`, `raccoon`) делят один скелет `rig/creature`; вид — это
+  сложение в `rig/creature/build.rs` и свой рисовальщик в `render/` (`goose.rs`, `pig.rs`, `raccoon.rs`),
   который зовёт общий `render/creature.rs`. Новый вид — по этим трём местам плюс набор в `assets/`
   и свой каталог сценок `sim/stunt/<вид>/`.
-- Сценки (`Stunt`): общие — `sim/stunt/common/`, видовые — `sim/stunt/goose/`, `sim/stunt/pig/`;
+- Сценки (`Stunt`): общие — `sim/stunt/common/`, видовые — `sim/stunt/goose/`, `sim/stunt/pig/`, `sim/stunt/raccoon/`;
   чья сценка — `Stunt::cast`. Одна сценка — один файл; порядок добавления — в заметке.
 - Зависимости: `png`, `serde`, `serde_json`, `windows-sys` — новых не добавлять без нужды.
 - Окна приложений подключают персонажа только через `Companion` (`src/companion.rs`), не через
@@ -38,9 +38,9 @@ cargo fmt --all -- --check
 cargo test -p ui-agent
 cargo clippy -p ui-agent --all-targets -- -D warnings
 cargo clippy -p ui-agent --all-targets --target x86_64-pc-windows-gnu -- -D warnings
-cargo run -p ui-agent --example preview_rig -- pig out.png # вид тела кадрами (pig | goose)
+cargo run -p ui-agent --example preview_rig -- pig out.png # вид тела кадрами (pig | goose | raccoon)
 cargo run -p ui-agent --example preview_stunt -- pig oops out.png --ui 3 --crop 140,110  # сценка кадрами
-./scripts/build-package.sh                                 # тестовый пакет в dist/ (оба персонажа)
+./scripts/build-package.sh                                 # тестовый пакет в dist/ (все персонажи)
 cargo test --manifest-path console/Cargo.toml              # консоль пакета (свой воркспейс)
 cargo clippy --manifest-path console/Cargo.toml --all-targets --target x86_64-pc-windows-gnu -- -D warnings
 ```

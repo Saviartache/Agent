@@ -2,7 +2,7 @@
 
 **Живой персонаж рабочего стола Windows для ваших Rust-приложений**
 
-Свинка или гусь гуляют поверх окон, замечают курсор, приносят карточки уведомлений
+Свинка, гусь или енот гуляют поверх окон, замечают курсор, приносят карточки уведомлений
 и показывают, чем занято приложение: думают, заняты, радуются успеху, расстраиваются из-за ошибки.
 
 ![Rust](https://img.shields.io/badge/Rust-2024-orange?logo=rust)
@@ -18,7 +18,7 @@
 
 ## Персонажи
 
-Оба вида делят один скелет. Различаются сложение, рисовальщик и свой каталог сценок.
+Все виды делят один скелет. Различаются сложение, рисовальщик и свой каталог сценок.
 Ниже показаны 8 жестов (по строкам) в 8 направлениях (по столбцам: вправо, по часовой стрелке).
 
 <table>
@@ -29,6 +29,12 @@
 <tr>
 <td><img src="docs/sheet-pig.png" alt="Спрайт-лист свинки"></td>
 <td><img src="docs/sheet-goose.png" alt="Спрайт-лист гуся"></td>
+</tr>
+<tr>
+<th>Енот</th>
+</tr>
+<tr>
+<td><img src="docs/sheet-raccoon.png" alt="Спрайт-лист енота"></td>
 </tr>
 </table>
 
@@ -45,8 +51,8 @@
 
 ## Сценки
 
-Кроме жестов, у персонажа есть **53 сценки**: короткие истории с предметами, частицами и следами.
-22 из них общие, у гуся 15 своих, у свинки 16.
+Кроме жестов, у персонажа есть **57 сценок**: короткие истории с предметами, частицами и следами.
+22 из них общие, у гуся 15 своих, у свинки 16, у енота 4.
 
 <img src="docs/stunt-pig-mud-bath.png" alt="Свинка принимает грязевую ванну" width="100%">
 
@@ -55,9 +61,10 @@
 
 | Кто    | Сценки                                                                                                                                                                                                                 |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Оба    | `cursor_heist` `zoomies` `note` `chase` `boop` `startle` `sneeze` `hiccups` `dance` `stretch` `stare` `nap` `gift` `ball` `slip` `trip_over_card` `self_scare` `peek` `edge_tumble` `butterfly` `flatten` `fake_death` |
+| Все    | `cursor_heist` `zoomies` `note` `chase` `boop` `startle` `sneeze` `hiccups` `dance` `stretch` `stare` `nap` `gift` `ball` `slip` `trip_over_card` `self_scare` `peek` `edge_tumble` `butterfly` `flatten` `fake_death` |
 | Гусь   | `leaf_pile` `wall_slam` `honk` `hiss` `march` `skid` `flight` `preen` `crumbs` `bath` `nest` `egg_surprise` `scribble` `neck_tangle` `goslings`                                                                        |
 | Свинка | `mud_bath` `oops` `fart_jump` `faceplant` `slide` `stuck` `shake_off` `mud_nap` `puddle_hop` `dig` `sniff` `snack` `bulldozer` `tail_chase` `piggy_bank` `belly_up`                                                    |
+| Енот   | `rinse` `rummage` `stash` `lookout`                                                                                                                                                                                    |
 
 </details>
 
@@ -190,7 +197,7 @@ src/
 ├── rig/        скелет creature: сложение вида, жесты, ноги, голова
 ├── render/     холст, тень, мозаика, рисовальщики видов и предметов
 ├── effects/    следы, грязь, листья, частицы, предметы
-├── sim/        шаг симуляции и сценки (common / goose / pig)
+├── sim/        шаг симуляции и сценки (common / goose / pig / raccoon)
 ├── platform/   Windows: окна, курсор, мониторы (весь unsafe здесь)
 ├── runtime/    поток персонажа
 ├── agent.rs    Agent и AgentHandle

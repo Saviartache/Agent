@@ -106,12 +106,13 @@ impl Notification {
 const COMMON: Option<RigKind> = None;
 const GOOSE: Option<RigKind> = Some(RigKind::Goose);
 const PIG: Option<RigKind> = Some(RigKind::Pig);
+const RACCOON: Option<RigKind> = Some(RigKind::Raccoon);
 
 /// Таблица сценок: вариант, имя, чья, озорная.
 macro_rules! stunts {
     ($($(#[$doc:meta])* $variant:ident = $name:literal, $cast:ident $(, $naughty:ident)?;)*) => {
         /// Сценка, которую персонаж разыгрывает сам. Общие доступны всем, видовые — только
-        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig}/`.
+        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,raccoon}/`.
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub enum Stunt {
             $($(#[$doc])* $variant,)*
@@ -252,6 +253,14 @@ stunts! {
     PiggyBank = "piggy_bank", PIG;
     /// Свинка: ножками вверх, дрыгает.
     BellyUp = "belly_up", PIG;
+    /// Енот: полощет яблоко передними лапами в луже.
+    Rinse = "rinse", RACCOON;
+    /// Енот: роется в мусорке и разбрасывает бумажки.
+    Rummage = "rummage", RACCOON;
+    /// Енот: прячет записку за спину и отдаёт только по щелчку.
+    Stash = "stash", RACCOON;
+    /// Енот: встаёт на задние лапы и озирается.
+    Lookout = "lookout", RACCOON;
 }
 
 impl Stunt {

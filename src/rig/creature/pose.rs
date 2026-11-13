@@ -68,6 +68,8 @@ pub struct Pose {
     pub feet: [Vec3; 2],
     /// Передняя пара четвероногого.
     pub fore: Option<[Vec3; 2]>,
+    /// Отставание кончика хвоста по земле, px.
+    pub tail: Vec2,
     /// Сила тени: 1 на земле, меньше в прыжке и в руках.
     pub shadow: f32,
     /// Насколько лапы поджаты под тело (сон).
@@ -119,5 +121,6 @@ impl Pose {
         self.head.muzzle *= k;
         self.feet = self.feet.map(zoom);
         self.fore = self.fore.map(|feet| feet.map(zoom));
+        self.tail = self.tail * k;
     }
 }

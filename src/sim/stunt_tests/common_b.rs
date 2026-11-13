@@ -38,6 +38,7 @@ fn common_b_gift_kinds() -> &'static [PropKind] {
     match character().rig() {
         Some(RigKind::Goose) => &[PropKind::Feather, PropKind::Pebble],
         Some(RigKind::Pig) => &[PropKind::Acorn],
+        Some(RigKind::Raccoon) => &[PropKind::Coin],
         None => &[PropKind::Pebble],
     }
 }

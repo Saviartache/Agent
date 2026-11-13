@@ -9,6 +9,7 @@ mod feet;
 mod gesture;
 mod head;
 mod pose;
+mod tail;
 #[cfg(test)]
 mod tests;
 
@@ -18,6 +19,7 @@ use self::feet::{Feet, Stance};
 use self::gesture::{CLOCK_WRAP, Mods};
 use self::head::{HeadState, wrap_angle, yaw_of};
 pub use self::pose::{Body, GROUND_SQUASH, Head, NECK_POINTS, Pose, flatten};
+use self::tail::Tail;
 use super::vec3::Vec3;
 use super::{Gesture, RigKind};
 use crate::math::Vec2;
@@ -38,6 +40,8 @@ const RUN_SPEED: f32 = 230.0;
 /// Резкие остановки не раскачивают голову сильнее, design px/с².
 const ACCEL_MAX: f32 = 1200.0;
 const MAX_SCALE: f32 = 64.0;
+/// С этой скорости крадущийся пригнулся целиком, design px/с.
+const PROWL_SPEED: f32 = 40.0;
 
 /// Что тело знает о мире на этом кадре.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -80,6 +84,7 @@ pub struct Creature {
     feet: Feet,
     fore: Option<Feet>,
     head: HeadState,
+    tail: Tail,
     antic: Antic,
     /// Накладка поворота, применённая к телу на прошлом кадре.
     spin: f32,
@@ -188,6 +193,7 @@ impl Creature {
                 .as_ref()
                 .map(|pair| Feet::planted(&stance(pair), 1)),
             head: HeadState::resting(Vec3::ZERO, yaw),
+            tail: Tail::default(),
             antic: Antic::default(),
             spin: 0.0,
             look: Look::default(),
@@ -213,10 +219,12 @@ impl Creature {
         // Кто не ходит боком, на ходу смотрит туда, куда идёт
         let ahead = !build.sidesteps && input.vel.length() > STRIDE_SPEED * self.scale;
         let heading_yaw = yaw_of(if ahead { input.vel } else { input.heading }) + input.antic.spin;
-        self.yaw += wrap_angle(heading_yaw - self.yaw) * (1.0 - (-dt * TURN_RATE).exp());
-        self.yaw = wrap_angle(self.yaw);
-        let run = (input.vel.length() / self.scale / RUN_SPEED).min(1.0);
+        let turned = wrap_angle(heading_yaw - self.yaw) * (1.0 - (-dt * TURN_RATE).exp());
+        self.yaw = wrap_angle(self.yaw + turned);
+        let speed = input.vel.length() / self.scale;
+        let run = (speed / RUN_SPEED).min(1.0);
         let mut target = gesture::target(input.gesture, input.progress, self.clock, run);
+        target.crouch += build.prowl * (speed / PROWL_SPEED).min(1.0);
         target.overlay(&input.antic);
         // Кратчайшим путём: накопленные обороты не раскручиваются назад
         target.roll = self.mods.roll + wrap_angle(target.roll - self.mods.roll);
@@ -230,6 +238,10 @@ impl Creature {
         }
         let aim = self.aim(accel, heading_yaw, input.look_at, run);
         self.head.update(dt, &aim, rng);
+        if dt > 0.0 {
+            let right = Vec2::from_angle(self.yaw + std::f32::consts::FRAC_PI_2);
+            self.tail.update(dt, accel, turned / dt, right, self.scale);
+        }
     }
 
     fn heading(&self) -> Vec2 {

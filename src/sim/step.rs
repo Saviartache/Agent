@@ -28,6 +28,7 @@ impl Sim {
         for _ in 0..steps as usize {
             moved = self.substep(sub, &mut cursor, frame.user_input).or(moved);
         }
+        self.clicked = false;
         if moved.is_some() {
             self.cursor_prev = moved;
         }

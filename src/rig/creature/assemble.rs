@@ -228,6 +228,7 @@ impl Creature {
                 .as_ref()
                 .zip(build.fore.as_ref())
                 .map(|(feet, fore)| pair(feet, fore.along)),
+            tail: self.tail.lag(),
             shadow: 1.0 / (1.0 + lift / SHADOW_HALF),
             tuck: m.tuck.clamp(0.0, 1.0),
             antic: self.antic,

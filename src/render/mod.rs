@@ -8,6 +8,7 @@ mod pig;
 pub mod pixel;
 mod props;
 mod puddle;
+mod raccoon;
 pub mod scene;
 pub mod shadow;
 

@@ -15,11 +15,12 @@ use crate::menu::{Item, Order, Step};
 const DIM: Color = Color::DarkGray;
 const ERROR: Color = Color::LightRed;
 
-/// Цвет персонажа: розовый у свинки, клювно-оранжевый у гуся.
+/// Цвет персонажа: розовый у свинки, клювно-оранжевый у гуся, серый у енота.
 fn accent(live: &Live) -> Color {
     match live.rig {
         Some(RigKind::Pig) => Color::Rgb(242, 140, 170),
         Some(RigKind::Goose) => Color::Rgb(250, 176, 60),
+        Some(RigKind::Raccoon) => Color::Rgb(168, 159, 148),
         None => Color::Cyan,
     }
 }

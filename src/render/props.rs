@@ -141,6 +141,7 @@ fn draw_one(canvas: &mut Canvas, origin: Vec2, prop: &Prop) {
         PropKind::Feather => feather(&mut pen, c, r, prop.angle),
         PropKind::Arrow => cursor(&mut pen, c, r),
         PropKind::Butterfly => butterfly(&mut pen, c, r, prop.age),
+        PropKind::Paper => paper(&mut pen, c, r, prop.angle),
     }
 }
 
@@ -321,6 +322,16 @@ fn feather(pen: &mut Pen, c: Vec2, r: f32, angle: f32) {
     }
 }
 
+/// Бумажка: белый листок с загнутым уголком, повёрнутый как лёг.
+fn paper(pen: &mut Pen, c: Vec2, r: f32, angle: f32) {
+    let (sin, cos) = angle.sin_cos();
+    let corner = c + Vec2::new(cos * 0.55 - sin * 0.4, sin * 0.55 + cos * 0.4) * r;
+    for (grow, color) in [(1.14, WHITE_EDGE), (1.0, WHITE)] {
+        pen.oval(c, Vec2::new(r, r * 0.72) * grow, angle, color);
+    }
+    pen.circle(corner, r * 0.3, WHITE_EDGE);
+}
+
 /// Стрелочка курсора: белая с тёмной обводкой.
 fn cursor(pen: &mut Pen, c: Vec2, r: f32) {
     let u = r * 1.5;
@@ -381,7 +392,7 @@ mod tests {
     use crate::render::scene::{Effects, draw_effects, effects_rect, enclosing};
     use crate::rng::Rng;
 
-    const KINDS: [PropKind; 13] = [
+    const KINDS: [PropKind; 14] = [
         PropKind::Ball,
         PropKind::Apple,
         PropKind::Acorn,
@@ -395,6 +406,7 @@ mod tests {
         PropKind::Feather,
         PropKind::Arrow,
         PropKind::Butterfly,
+        PropKind::Paper,
     ];
     const SIDE: usize = 300;
 
