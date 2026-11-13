@@ -92,6 +92,15 @@ impl Notification {
         self.ttl = ttl;
         self
     }
+
+    /// Лежит, пока пользователь не закроет; переполнение вытесняет её последней.
+    pub fn sticky(self) -> Self {
+        self.ttl(Duration::MAX)
+    }
+
+    pub fn is_sticky(&self) -> bool {
+        self.ttl == Duration::MAX
+    }
 }
 
 const COMMON: Option<RigKind> = None;

@@ -167,7 +167,12 @@ impl Items {
 
     pub fn spawn(&mut self, notification: Notification, carrier: Vec2) -> ItemId {
         if self.items.len() == self.max {
-            self.evicted.push(self.items.remove(0).id);
+            let oldest = self
+                .items
+                .iter()
+                .position(|item| !item.notification.is_sticky())
+                .unwrap_or(0);
+            self.evicted.push(self.items.remove(oldest).id);
         }
         let id = ItemId(self.next_id);
         self.next_id = self.next_id.wrapping_add(1);
@@ -310,6 +315,21 @@ mod tests {
         assert!(items.get(id).unwrap().opacity() < 1.0);
         assert_eq!(tick(&mut items, 0.5), [Closed { id, by_user: false }]);
         assert!(items.is_empty());
+    }
+
+    #[test]
+    fn sticky_stays_until_user_and_outlives_eviction() {
+        let mut items = Items::new(2);
+        let sticky = items.spawn(Notification::info("тест").sticky(), HOME);
+        items.place(sticky, HOME);
+        tick(&mut items, 1.0e6);
+        assert_eq!(phase(&items, sticky), Some(ItemPhase::Placed));
+        let first = items.spawn(note(5.0), HOME);
+        items.spawn(note(5.0), HOME);
+        assert!(items.get(first).is_none() && items.get(sticky).is_some());
+        assert!(items.dismiss(sticky, true));
+        tick(&mut items, 1.0);
+        assert!(items.get(sticky).is_none());
     }
 
     #[test]
