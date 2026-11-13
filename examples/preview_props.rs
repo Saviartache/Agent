@@ -43,6 +43,7 @@ const KINDS: [PropKind; 14] = [
     PropKind::Arrow,
     PropKind::Butterfly,
     PropKind::Slipper,
+    PropKind::Paper,
 ];
 
 /// Одна ячейка листа: предмет или всплеск на заданный момент.

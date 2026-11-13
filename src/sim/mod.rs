@@ -134,6 +134,8 @@ pub struct Sim {
     drive: Option<Drive>,
     /// Ведомое тело упёрлось в край: нормаль внутрь экрана; только на этом шаге.
     bumped: Option<Vec2>,
+    /// По персонажу щёлкнули с прошлого кадра.
+    clicked: bool,
     /// Время жизни симуляции, с.
     clock: f32,
     /// Курсор на этом шаге.
@@ -226,6 +228,7 @@ impl Sim {
             antic: Antic::default(),
             drive: None,
             bumped: None,
+            clicked: false,
             clock: 0.0,
             cursor: None,
             trail: Trail::default(),

@@ -1,6 +1,7 @@
 //! Демонстрация: персонаж на рабочем столе Windows, управляемый из консоли.
 //! `cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|dachshund] [--grab]`
 //! `cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|elephant] [--grab]`
+//! `cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|raccoon] [--grab]`
 //! Команды консоли — `help`; ещё есть меню по правой кнопке.
 
 #[cfg(not(windows))]
@@ -130,6 +131,7 @@ mod demo {
                         .next()
                         .ok_or("--rig требует имя: goose, pig или dachshund")?;
                         .ok_or("--rig требует имя: goose, pig или elephant")?;
+                        .ok_or("--rig требует имя: goose, pig или raccoon")?;
                     options.rig =
                         RigKind::from_name(&name).ok_or(format!("нет такого тела: {name}"))?;
                 }

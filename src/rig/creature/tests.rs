@@ -402,6 +402,22 @@ fn pig_never_walks_sideways_but_goose_may() {
 }
 
 #[test]
+fn tail_tip_lags_on_start_and_turn_then_settles() {
+    let mut raccoon = Rig::of(RigKind::Raccoon, 7);
+    raccoon.go(WALK, RIGHT);
+    raccoon.run(0.1, DT);
+    assert!(raccoon.goose.pose().tail.x < -SCALE);
+    raccoon.run(2.0, DT);
+    assert!(raccoon.goose.pose().tail.length() < 0.2 * SCALE);
+    // Поворот налево отбрасывает кончик вправо
+    raccoon.go(0.0, Vec2::new(0.0, -1.0));
+    raccoon.run(0.15, DT);
+    assert!(raccoon.goose.pose().tail.y > 1.0 * SCALE);
+    raccoon.run(3.0, DT);
+    assert!(raccoon.goose.pose().tail.length() < 0.2 * SCALE);
+}
+
+#[test]
 fn pig_head_sits_on_the_body_and_dangles_on_four_legs() {
     let mut pig = Rig::of(RigKind::Pig, 7);
     pig.go(230.0 * SCALE, RIGHT);

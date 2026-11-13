@@ -67,6 +67,7 @@ impl Character {
             RigKind::Pig => include_str!("../../assets/pig/agent.json"),
             RigKind::Dachshund => include_str!("../../assets/dachshund/agent.json"),
             RigKind::Elephant => include_str!("../../assets/elephant/agent.json"),
+            RigKind::Raccoon => include_str!("../../assets/raccoon/agent.json"),
         };
         Self::from_source(manifest, &|_| Err(io::ErrorKind::NotFound.into()))
     }

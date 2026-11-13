@@ -70,6 +70,8 @@ pub struct Pose {
     pub fore: Option<[Vec3; 2]>,
     /// Хобот слона: корень на морде и кончик.
     pub trunk: Option<[Vec3; 2]>,
+    /// Отставание кончика хвоста по земле, px.
+    pub tail: Vec2,
     /// Сила тени: 1 на земле, меньше в прыжке и в руках.
     pub shadow: f32,
     /// Насколько лапы поджаты под тело (сон).
@@ -127,5 +129,6 @@ impl Pose {
         self.feet = self.feet.map(zoom);
         self.fore = self.fore.map(|feet| feet.map(zoom));
         self.trunk = self.trunk.map(|trunk| trunk.map(zoom));
+        self.tail = self.tail * k;
     }
 }

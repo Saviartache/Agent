@@ -1,6 +1,7 @@
 //! Сценки: персонаж сам разыгрывает что-то с предметами, курсором или запиской.
 //! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`, `dachshund/`);
 //! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`, `elephant/`);
+//! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`, `raccoon/`);
 //! чья сценка, решает `Stunt::cast`. Новая сценка — вариант `Stunt`, файл со своим
 //! состоянием и методами `begin_*`/`step_*` и строка в `acts!` здесь.
 //!
@@ -12,6 +13,7 @@ mod dachshund;
 mod elephant;
 mod goose;
 mod pig;
+mod raccoon;
 mod reflex;
 
 use std::f32::consts::TAU;
@@ -138,6 +140,10 @@ acts! {
     Shower: elephant::shower::Shower => begin_shower, step_shower;
     MouseScare: elephant::mouse_scare::MouseScare => begin_mouse_scare, step_mouse_scare;
     TrunkNap: elephant::trunk_nap::TrunkNap => begin_trunk_nap, step_trunk_nap;
+    Rinse: raccoon::rinse::Rinse => begin_rinse, step_rinse;
+    Rummage: raccoon::rummage::Rummage => begin_rummage, step_rummage;
+    Stash: raccoon::stash::Stash => begin_stash, step_stash;
+    Lookout: raccoon::lookout::Lookout => begin_lookout, step_lookout;
 }
 
 /// Итог шага сценки.
@@ -304,6 +310,7 @@ impl Sim {
             Some(RigKind::Pig) => pig::NOTES,
             Some(RigKind::Dachshund) => dachshund::NOTES,
             Some(RigKind::Elephant) => elephant::NOTES,
+            Some(RigKind::Raccoon) => raccoon::NOTES,
             None => common::NOTES,
         }
     }

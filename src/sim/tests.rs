@@ -285,6 +285,11 @@ mod elephant {
 
     fn character() -> Character {
         Character::builtin(RigKind::Elephant).unwrap()
+mod raccoon {
+    use super::*;
+
+    fn character() -> Character {
+        Character::builtin(RigKind::Raccoon).unwrap()
     }
 
     include!("scenarios.rs");
@@ -292,6 +297,7 @@ mod elephant {
     include!("stunt_tests/common_b.rs");
     include!("stunt_tests/dachshund.rs");
     include!("stunt_tests/elephant_a.rs");
+    include!("stunt_tests/raccoon.rs");
 }
 
 mod sprite {

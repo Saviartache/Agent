@@ -108,6 +108,7 @@ const GOOSE: Option<RigKind> = Some(RigKind::Goose);
 const PIG: Option<RigKind> = Some(RigKind::Pig);
 const DACHSHUND: Option<RigKind> = Some(RigKind::Dachshund);
 const ELEPHANT: Option<RigKind> = Some(RigKind::Elephant);
+const RACCOON: Option<RigKind> = Some(RigKind::Raccoon);
 
 /// Таблица сценок: вариант, имя, чья, озорная.
 macro_rules! stunts {
@@ -115,6 +116,7 @@ macro_rules! stunts {
         /// Сценка, которую персонаж разыгрывает сам. Общие доступны всем, видовые — только
         /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,dachshund}/`.
         /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,elephant}/`.
+        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,raccoon}/`.
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub enum Stunt {
             $($(#[$doc])* $variant,)*
@@ -271,6 +273,14 @@ stunts! {
     MouseScare = "mouse_scare", ELEPHANT;
     /// Слоник: спит, положив хобот на землю, и сопит.
     TrunkNap = "trunk_nap", ELEPHANT;
+    /// Енот: полощет яблоко передними лапами в луже.
+    Rinse = "rinse", RACCOON;
+    /// Енот: роется в мусорке и разбрасывает бумажки.
+    Rummage = "rummage", RACCOON;
+    /// Енот: прячет записку за спину и отдаёт только по щелчку.
+    Stash = "stash", RACCOON;
+    /// Енот: встаёт на задние лапы и озирается.
+    Lookout = "lookout", RACCOON;
 }
 
 impl Stunt {

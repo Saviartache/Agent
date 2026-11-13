@@ -17,12 +17,14 @@ const ERROR: Color = Color::LightRed;
 
 /// Цвет персонажа: розовый у свинки, клювно-оранжевый у гуся, рыжий у таксы.
 /// Цвет персонажа: розовый у свинки, клювно-оранжевый у гуся, серо-голубой у слоника.
+/// Цвет персонажа: розовый у свинки, клювно-оранжевый у гуся, серый у енота.
 fn accent(live: &Live) -> Color {
     match live.rig {
         Some(RigKind::Pig) => Color::Rgb(242, 140, 170),
         Some(RigKind::Goose) => Color::Rgb(250, 176, 60),
         Some(RigKind::Dachshund) => Color::Rgb(196, 116, 58),
         Some(RigKind::Elephant) => Color::Rgb(147, 168, 194),
+        Some(RigKind::Raccoon) => Color::Rgb(168, 159, 148),
         None => Color::Cyan,
     }
 }

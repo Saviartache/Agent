@@ -269,6 +269,7 @@ impl Creature {
                 .zip(build.fore.as_ref())
                 .map(|(feet, fore)| pair(feet, fore.along)),
             trunk,
+            tail: self.tail.lag(),
             shadow: 1.0 / (1.0 + lift / SHADOW_HALF),
             tuck: m.tuck.clamp(0.0, 1.0),
             wag: m.wag.clamp(0.0, 1.0) * cycle(self.clock, WAG_HZ),

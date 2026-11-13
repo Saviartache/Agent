@@ -4,6 +4,7 @@
 
 Свинка, гусь или такса гуляют поверх окон, замечают курсор, приносят карточки уведомлений
 Свинка, гусь или слоник гуляют поверх окон, замечают курсор, приносят карточки уведомлений
+Свинка, гусь или енот гуляют поверх окон, замечают курсор, приносят карточки уведомлений
 и показывают, чем занято приложение: думают, заняты, радуются успеху, расстраиваются из-за ошибки.
 
 ![Rust](https://img.shields.io/badge/Rust-2024-orange?logo=rust)
@@ -35,6 +36,12 @@
 <td><img src="docs/sheet-dachshund.png" alt="Спрайт-лист таксы"></td>
 <td><img src="docs/sheet-elephant.png" alt="Спрайт-лист слоника"></td>
 </tr>
+<tr>
+<th>Енот</th>
+</tr>
+<tr>
+<td><img src="docs/sheet-raccoon.png" alt="Спрайт-лист енота"></td>
+</tr>
 </table>
 
 | Строка | Жест        | Когда играет                           |
@@ -53,6 +60,7 @@
 Кроме жестов, у персонажа есть **57 сценок**: короткие истории с предметами, частицами и следами.
 22 из них общие, у гуся 15 своих, у свинки 16, у таксы 4.
 22 из них общие, у гуся 15 своих, у свинки 16, у слоника 4.
+22 из них общие, у гуся 15 своих, у свинки 16, у енота 4.
 
 <img src="docs/stunt-pig-mud-bath.png" alt="Свинка принимает грязевую ванну" width="100%">
 
@@ -66,6 +74,7 @@
 | Свинка | `mud_bath` `oops` `fart_jump` `faceplant` `slide` `stuck` `shake_off` `mud_nap` `puddle_hop` `dig` `sniff` `snack` `bulldozer` `tail_chase` `piggy_bank` `belly_up`                                                    |
 | Такса  | `slipper` `burrow` `u_turn` `yap`                                                                                                                                                                                      |
 | Слоник | `trumpet` `shower` `mouse_scare` `trunk_nap` |
+| Енот   | `rinse` `rummage` `stash` `lookout`                                                                                                                                                                                    |
 
 </details>
 
@@ -200,6 +209,7 @@ src/
 ├── effects/    следы, грязь, листья, частицы, предметы
 ├── sim/        шаг симуляции и сценки (common / goose / pig / dachshund)
 ├── sim/        шаг симуляции и сценки (common / goose / pig / elephant)
+├── sim/        шаг симуляции и сценки (common / goose / pig / raccoon)
 ├── platform/   Windows: окна, курсор, мониторы (весь unsafe здесь)
 ├── runtime/    поток персонажа
 ├── agent.rs    Agent и AgentHandle
