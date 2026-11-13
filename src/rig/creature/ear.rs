@@ -23,9 +23,9 @@ pub struct EarShape {
 const REACH: f32 = 0.85;
 const DROP: f32 = 0.6;
 /// Сдвиг низа лопуха наружу в долях полуоси вниз.
-const SLANT: f32 = 0.5;
+const SLANT: f32 = 0.35;
 /// Раскрытое целиком отводит низ наружу ещё на столько.
-const FAN: f32 = 0.6;
+const FAN: f32 = 0.75;
 /// Насколько ухо висит к земле, а не от макушки: лопух мягкий.
 const FLOP: f32 = 0.5;
 /// Выше шарнира ухо поднимается не больше этой доли полуоси вниз.
@@ -99,7 +99,7 @@ impl Flaps {
             // Угол от прижатого назад; за прямым ухо загибается к морде
             let blade = side * sin - head.forward * cos;
             let hang = hang(blade, head.up);
-            // Изнанка смотрит вперёд: в покое — к морде, раскрытое — прямо
+            // Изнанка смотрит вперёд: до прямого угла — чуть наружу, за ним — к морде
             let inner = hang.cross(blade) * SIDES[i];
             let [x, y, z] = shape.root;
             let z = z - shape.slump * tuck.clamp(0.0, 1.0);
@@ -117,7 +117,7 @@ impl Flaps {
                 axes,
                 inner,
             };
-            grounded(fallen(ear, back))
+            grounded(fallen(ear, back), back)
         })
     }
 }
@@ -144,15 +144,20 @@ fn fallen(ear: Ear, back: Vec3) -> Ear {
     })
 }
 
-/// Ухо не уходит под землю: ниже шарнира сплющивается по высоте и ложится на неё.
-fn grounded(ear: Ear) -> Ear {
+/// Ухо не уходит под землю: то, что ниже шарнира, ложится на неё назад, не теряя площади.
+fn grounded(ear: Ear, back: Vec3) -> Ear {
     let reach = ear.axes[0].z.hypot(ear.axes[1].z);
     let below = ear.root.z - ear.center.z + reach;
     if below <= ear.root.z || below <= 0.0 {
         return ear;
     }
     let k = (ear.root.z / below).max(0.0);
-    flattened(ear, k, |v| Vec3::new(v.x, v.y, v.z * k))
+    // Назад поперёк лопуха: иначе ухо сложится в черту
+    let out = Vec3::new(ear.axes[0].x, ear.axes[0].y, 0.0).normalized();
+    let back = (back - out * back.dot(out)).normalized();
+    flattened(ear, k, |v| {
+        Vec3::new(v.x, v.y, v.z * k) + back * ((-v.z).max(0.0) * (1.0 - k))
+    })
 }
 
 /// Ухо, сжатое по высоте до доли `k` отображением `flat` от шарнира.

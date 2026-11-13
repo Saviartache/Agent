@@ -5,8 +5,8 @@
 mod ears;
 
 use super::creature::{
-    INK, MOUTH, OUTLINE, OUTLINE_WIDTH, Pen, TONGUE, WHITE, cross, faces_viewer, toward_viewer,
-    turned_away,
+    INK, Leg, LegLayer, MOUTH, OUTLINE, OUTLINE_WIDTH, Pen, TONGUE, WHITE, cross, faces_viewer,
+    toward_viewer, turned_away,
 };
 use super::{Canvas, Color};
 use crate::math::Vec2;
@@ -29,8 +29,8 @@ const HIP: [f32; 3] = [0.55, 0.5, 0.5];
 /// Нога-тумба: у ступни шире, чем у бедра.
 const LEG_RADII: [f32; 2] = [3.9, 3.5];
 const LEG_MAX: f32 = 11.0;
-/// Ногти на ступне: вбок и к зрителю в долях её радиуса.
-const TOENAILS: [[f32; 2]; 2] = [[-0.45, 0.55], [0.45, 0.55]];
+/// Ногти внизу носка: вбок, вперёд и вниз в долях радиуса ступни.
+const TOENAILS: [[f32; 3]; 2] = [[-0.45, 0.6, 0.3], [0.45, 0.6, 0.3]];
 const TOENAIL_RADIUS: f32 = 1.3;
 /// Хвост от центра тела в долях его полуосей: назад и вверх, от корня к кончику.
 const TAIL: [[f32; 2]; 2] = [[0.95, 0.35], [1.2, -0.25]];
@@ -65,12 +65,14 @@ pub(super) fn draw(canvas: &mut Canvas, pen: &Pen) {
         pen,
         frame: pen.pose.head_frame(),
     };
-    elephant.legs(canvas, false);
+    let legs = pen.legs(HIP, LEG_MAX);
+    elephant.legs(canvas, &legs, LegLayer::Back);
     elephant.details(canvas, Layer::Back);
     elephant.body(canvas);
     elephant.details(canvas, Layer::Middle);
+    elephant.legs(canvas, &legs, LegLayer::Middle);
     elephant.head(canvas);
-    elephant.legs(canvas, true);
+    elephant.legs(canvas, &legs, LegLayer::Front);
     elephant.details(canvas, Layer::Front);
 }
 
@@ -132,63 +134,29 @@ impl Elephant<'_> {
         canvas.fill_circle(pen.at(head.center), head.radius, HIDE, 1.0);
     }
 
-    /// Точку закрывает тело: луч от неё к зрителю входит в эллипсоид.
-    fn behind_body(&self, at: Vec3) -> bool {
-        let body = &self.pen.pose.body;
-        let frame = body.frame();
-        let axes = [frame.forward, frame.right, frame.up];
-        let local = |v: [f32; 3]| {
-            Vec3::new(
-                v[0] / body.radii[0],
-                v[1] / body.radii[1],
-                v[2] / body.radii[2],
-            )
-        };
-        let p = local(axes.map(|axis| (at - body.center).dot(axis)));
-        let d = local(axes.map(toward_viewer));
-        // |p + t·d| = 1: дальний корень впереди точки
-        let (a, b, c) = (d.dot(d), p.dot(d), p.dot(p) - 1.0);
-        let disc = b * b - a * c;
-        disc >= 0.0 && disc.sqrt() >= b
-    }
-
-    /// Ноги по одну сторону от серого: `front` — те, что торчат к зрителю (на боку, на спине).
-    fn legs(&self, canvas: &mut Canvas, front: bool) {
-        let (pen, pose, body) = (self.pen, self.pen.pose, &self.pen.pose.body);
-        let out = 1.0 - pose.tuck;
-        let k = pose.scale * (2.0 * out).min(1.0);
-        let frame = body.frame();
-        let forward = frame.forward * (body.radii[0] * HIP[0]);
-        let right = frame.right * (body.radii[1] * HIP[1]);
-        let down = frame.up * (-body.radii[2] * HIP[2]);
-        let belly_front = faces_viewer(down);
-        if belly_front != front {
-            return;
-        }
-        let pairs = [(pose.feet, -1.0), (pose.fore.unwrap_or(pose.feet), 1.0)];
-        for (feet, along) in pairs {
-            for (foot, side) in feet.into_iter().zip(SIDES) {
-                let hip = body.center + forward * along + right * side + down;
-                let reach = (foot - hip).length().max(f32::EPSILON);
-                let stretch = (LEG_MAX * pose.scale / reach).min(1.0);
-                let sole = hip.lerp(foot, out * stretch);
-                let (a, b) = (pen.at(sole), pen.at(hip));
-                canvas.fill_capsule(a, b, LEG_RADII[0] * k, LEG_RADII[1] * k, LEG, 1.0);
-                // Ногти только у стоящей ноги: на боку и поджатой их не видно
-                if belly_front || out < 1.0 {
-                    continue;
-                }
-                for [x, y] in TOENAILS {
-                    let at = a + Vec2::new(x, y) * (LEG_RADII[0] * k);
-                    canvas.fill_circle(at, TOENAIL_RADIUS * k, TOENAIL, 1.0);
-                }
+    /// Ноги слоя от дальней к ближней; ногти — на носке стоящей ноги, со стороны зрителя.
+    fn legs(&self, canvas: &mut Canvas, legs: &[Leg], layer: LegLayer) {
+        let (pen, pose) = (self.pen, self.pen.pose);
+        // На боку и поджатой ногой ногтей не видно
+        let upright = pose.body.frame().up.z > 0.7 && pose.tuck <= 0.0;
+        let ahead = Vec3::on_ground(pose.body.forward, 0.0);
+        let side = Vec3::new(-ahead.y, ahead.x, 0.0);
+        let nails =
+            TOENAILS.map(|[x, along, down]| side * x + ahead * along + Vec3::new(0.0, 0.0, -down));
+        for leg in legs.iter().filter(|leg| leg.layer == layer) {
+            let (a, k) = (pen.at(leg.sole), leg.size);
+            let radius = LEG_RADII[0] * k;
+            canvas.fill_capsule(a, pen.at(leg.top), radius, LEG_RADII[1] * k, LEG, 1.0);
+            for nail in nails.into_iter().filter(|n| upright && faces_viewer(*n)) {
+                let at = pen.at(leg.sole + nail * radius);
+                canvas.fill_circle(at, TOENAIL_RADIUS * k, TOENAIL, 1.0);
             }
         }
     }
 
     /// Детали слоя от дальней к ближней.
     fn details(&self, canvas: &mut Canvas, layer: Layer) {
-        let tail_front = self.pen.pose.body.forward.y < 0.0;
+        let tail_front = self.pen.near_side(self.tail_points()[0]);
         if layer == [Layer::Back, Layer::Front][usize::from(tail_front)] {
             self.tail(canvas);
         }
@@ -226,7 +194,7 @@ impl Elephant<'_> {
             let root = ear.root;
             let layer = if depth(root) >= 0.0 {
                 Layer::Front
-            } else if self.behind_body(ear.center) {
+            } else if self.pen.behind_body(ear.center) {
                 Layer::Back
             } else {
                 Layer::Middle
@@ -264,12 +232,17 @@ impl Elephant<'_> {
         !turned_away(self.frame.forward) && faces_viewer(self.eye_at(side))
     }
 
-    fn tail(&self, canvas: &mut Canvas) {
-        let (pen, body) = (self.pen, &self.pen.pose.body);
+    fn tail_points(&self) -> [Vec3; 2] {
+        let body = &self.pen.pose.body;
         let frame = body.frame();
         let back = frame.forward * -body.radii[0];
         let up = frame.up * body.radii[2];
-        let [root, tip] = TAIL.map(|[b, u]| pen.at(body.center + back * b + up * u));
+        TAIL.map(|[b, u]| body.center + back * b + up * u)
+    }
+
+    fn tail(&self, canvas: &mut Canvas) {
+        let pen = self.pen;
+        let [root, tip] = self.tail_points().map(|p| pen.at(p));
         let s = pen.pose.scale;
         canvas.fill_capsule(root, tip, TAIL_RADIUS * s, TAIL_RADIUS * s, EAR, 1.0);
         canvas.fill_circle(tip, TUFT_RADIUS * s, TUFT, 1.0);
@@ -379,6 +352,59 @@ mod tests {
         assert!(solid(&standing, LEG) > solid(&sleeping, LEG));
         assert!(solid(&standing, TOENAIL) > 0);
         assert_eq!(solid(&sleeping, TOENAIL), 0);
+    }
+
+    #[test]
+    fn in_profile_far_legs_show_below_the_belly_and_near_ones_over_it() {
+        use crate::render::creature::test_support::{legs_over_body, one_side_legs};
+        let far = one_side_legs(RigKind::Elephant, false);
+        let (pixels, w, _) = render(&far);
+        let (all, over) = legs_over_body(&far, &pixels, w, LEG);
+        assert!(all > 20 && over == 0, "{all} {over}");
+        let near = one_side_legs(RigKind::Elephant, true);
+        let (pixels, w, _) = render(&near);
+        let (all, over) = legs_over_body(&near, &pixels, w, LEG);
+        assert!(all > 20 && over > 0, "{all} {over}");
+    }
+
+    #[test]
+    fn toenails_are_on_the_toes_and_hidden_from_behind() {
+        let (back, ..) = render(&pose(AWAY));
+        assert!(solid(&back, LEG) > 0);
+        assert_eq!(near(&back, TOENAIL), 0);
+        let (front, ..) = render(&pose(TOWARD));
+        assert!(near(&front, TOENAIL) > 0);
+    }
+
+    #[test]
+    fn ear_inner_and_rim_narrow_together_when_turning() {
+        let mut last: Option<[f32; 2]> = None;
+        for step in 0..=60 {
+            // От анфаса через профиль к спине
+            let angle = std::f32::consts::FRAC_PI_2 - step as f32 * std::f32::consts::PI / 60.0;
+            let elephant = posed(Vec2::from_angle(angle), Gesture::Idle, Antic::default());
+            let pen = Pen {
+                origin: Vec2::ZERO,
+                pose: &elephant,
+            };
+            let ears = elephant.ears.unwrap();
+            let share = ears.map(|ear| ears::inner_share(&pen, &ear));
+            for (ear, share) in ears.iter().zip(share) {
+                // Повёрнутое к зрителю ухо — розовое с каймой, а не серое с розовой щелью
+                if toward_viewer(ear.inner) > 0.5 {
+                    assert!(share > 0.2, "{step} {share}");
+                }
+                if toward_viewer(ear.inner) < 0.1 {
+                    assert_eq!(share, 0.0, "{step}");
+                }
+            }
+            if let Some(last) = last {
+                for (a, b) in last.into_iter().zip(share) {
+                    assert!((a - b).abs() < 0.15, "{step} {a} {b}");
+                }
+            }
+            last = Some(share);
+        }
     }
 
     #[test]

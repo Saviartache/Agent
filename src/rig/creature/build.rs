@@ -159,8 +159,8 @@ const ELEPHANT: Build = Build {
     }),
     ears: Some(EarShape {
         root: [0.7, -0.4, 0.3],
-        radii: [0.9, 0.85],
-        open: [1.75, 1.5],
+        radii: [0.9, 1.0],
+        open: [1.4, 1.55],
         slump: 0.5,
     }),
     prowl: 0.0,

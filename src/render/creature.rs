@@ -90,6 +90,26 @@ pub(super) struct Pen<'a> {
     pub pose: &'a Pose,
 }
 
+/// Нога четвероногого: от бедра (плеча) к ступне.
+pub(super) struct Leg {
+    /// Верх: бедро в теле у дальней ноги, место выхода из брюха у ближней.
+    pub top: Vec3,
+    pub sole: Vec3,
+    /// Насколько бедро ближе центра тела к зрителю, px.
+    depth: f32,
+    pub layer: LegLayer,
+    /// Масштаб толщины: поджатая нога тает под телом.
+    pub size: f32,
+}
+
+/// Когда нога рисуется: до тела, между телом и головой, после головы.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) enum LegLayer {
+    Back,
+    Middle,
+    Front,
+}
+
 /// Силуэт эллипсоида или плоского эллипса по полуосям на экране.
 fn silhouette<const N: usize>(center: Vec2, axes: [Vec2; N]) -> Oval {
     let (mut xx, mut yy, mut xy) = (0.0, 0.0, 0.0);
@@ -139,6 +159,91 @@ impl Pen<'_> {
         silhouette(self.at(center), axes.map(flatten))
     }
 
+    /// Четыре ноги от дальней к ближней. Бедро на дальней от зрителя стороне тела —
+    /// нога за телом и видна только ниже него; на ближней — поверх тела от брюха и, если
+    /// голова ближе, под ней. `hip` — бедро в долях полуосей тела (по ходу, вбок, вниз),
+    /// `max` — длина ноги, design px.
+    pub fn legs(&self, hip: [f32; 3], max: f32) -> [Leg; 4] {
+        let (pose, body) = (self.pose, &self.pose.body);
+        let out = 1.0 - pose.tuck;
+        // Поджатая наполовину нога короче, но не тоньше
+        let size = pose.scale * (2.0 * out).min(1.0);
+        let frame = body.frame();
+        let forward = frame.forward * (body.radii[0] * hip[0]);
+        let right = frame.right * (body.radii[1] * hip[1]);
+        let down = frame.up * (-body.radii[2] * hip[2]);
+        let fore = pose.fore.unwrap_or(pose.feet);
+        let head = toward_viewer(pose.head.center - body.center);
+        let feet = [
+            (pose.feet[0], -1.0, -1.0),
+            (pose.feet[1], -1.0, 1.0),
+            (fore[0], 1.0, -1.0),
+            (fore[1], 1.0, 1.0),
+        ];
+        let mut legs = feet.map(|(foot, along, side)| {
+            let hip = body.center + forward * along + right * side + down;
+            let reach = (foot - hip).length().max(f32::EPSILON);
+            // Отставшая на бегу нога не вытягивается: ступня отрывается от земли
+            let sole = hip.lerp(foot, out * (max * pose.scale / reach).min(1.0));
+            let depth = toward_viewer(hip - body.center);
+            let exit = self.body_exit(hip, sole);
+            // Ступня в теле — ноги не видно, тело её закрывает
+            let (top, layer) = if depth < 0.0 || exit >= 1.0 {
+                (hip, LegLayer::Back)
+            } else if depth < head {
+                (hip.lerp(sole, exit), LegLayer::Middle)
+            } else {
+                (hip.lerp(sole, exit), LegLayer::Front)
+            };
+            Leg {
+                top,
+                sole,
+                depth,
+                layer,
+                size,
+            }
+        });
+        legs.sort_by(|a, b| a.depth.total_cmp(&b.depth));
+        legs
+    }
+
+    /// Смещение от центра тела в его осях, где полуоси — единицы.
+    fn body_local(&self, v: Vec3) -> Vec3 {
+        let body = &self.pose.body;
+        let frame = body.frame();
+        Vec3::new(
+            v.dot(frame.forward) / body.radii[0],
+            v.dot(frame.right) / body.radii[1],
+            v.dot(frame.up) / body.radii[2],
+        )
+    }
+
+    /// Доля пути от `from` к `to`, где он выходит из тела; 0 — `from` уже снаружи.
+    fn body_exit(&self, from: Vec3, to: Vec3) -> f32 {
+        let p = self.body_local(from - self.pose.body.center);
+        let d = self.body_local(to - from);
+        let (a, b, c) = (d.dot(d), p.dot(d), p.dot(p) - 1.0);
+        if c >= 0.0 || a <= f32::EPSILON {
+            return 0.0;
+        }
+        (-b + (b * b - a * c).sqrt()) / a
+    }
+
+    /// Точку закрывает тело: луч от неё к зрителю входит в эллипсоид.
+    pub fn behind_body(&self, at: Vec3) -> bool {
+        let p = self.body_local(at - self.pose.body.center);
+        let d = self.body_local(TOWARD_VIEWER);
+        // |p + t·d| = 1: дальний корень впереди точки
+        let (a, b, c) = (d.dot(d), p.dot(d), p.dot(p) - 1.0);
+        let disc = b * b - a * c;
+        disc >= 0.0 && disc.sqrt() >= b
+    }
+
+    /// Точка тела на ближней к зрителю стороне от его центра: хвост поверх тела.
+    pub fn near_side(&self, at: Vec3) -> bool {
+        faces_viewer(at - self.pose.body.center)
+    }
+
     /// Пятно под телом; в прыжке и в руках оно меньше и бледнее.
     fn shadow(&self, canvas: &mut Canvas) {
         let (pose, body) = (self.pose, &self.pose.body);
@@ -184,6 +289,39 @@ pub(super) mod test_support {
         let origin = Vec2::new(rect.x as f32 - MARGIN as f32, rect.y as f32 - MARGIN as f32);
         draw(&mut canvas, origin, pose);
         (pixels, w, h)
+    }
+
+    /// Четвероногое в профиль, у которого видны ноги только ближней (`near`) или только
+    /// дальней стороны: ступни другой спрятаны в тело.
+    pub fn one_side_legs(kind: RigKind, near: bool) -> Pose {
+        let mut pose = pose(kind, Vec2::new(1.0, 0.0));
+        let near_side = usize::from(toward_viewer(pose.body.frame().right) > 0.0);
+        let hidden = if near { 1 - near_side } else { near_side };
+        let inside = pose.body.center;
+        pose.feet[hidden] = inside;
+        if let Some(fore) = &mut pose.fore {
+            fore[hidden] = inside;
+        }
+        pose
+    }
+
+    /// Пиксели ног и сколько из них лежат поверх тела — внутри его силуэта, без края.
+    pub fn legs_over_body(pose: &Pose, pixels: &[u32], w: usize, leg: Color) -> (usize, usize) {
+        let rect = rect(pose, Creature::extent(SCALE));
+        let origin = Vec2::new(rect.x as f32, rect.y as f32) - Vec2::new(1.0, 1.0) * MARGIN as f32;
+        let mut body = Pen { origin, pose }.body();
+        body.radii = body.radii * 0.95;
+        // Мозаика не оставляет тонкую ногу чистой: цвет близкий, а не точный
+        let channels = |c: u32| [c >> 16 & 0xFF, c >> 8 & 0xFF, c & 0xFF];
+        let close = |p: u32| {
+            let (got, want) = (channels(p), channels(leg.0));
+            p >> 24 == 0xFF && (0..3).all(|i| got[i].abs_diff(want[i]) <= 8)
+        };
+        let legs = pixels.iter().enumerate().filter(|(_, p)| close(**p));
+        legs.fold((0, 0), |(all, over), (i, _)| {
+            let at = Vec2::new((i % w) as f32 + 0.5, (i / w) as f32 + 0.5);
+            (all + 1, over + usize::from(body.contains(at)))
+        })
     }
 
     pub fn opaque(pixels: &[u32]) -> usize {

@@ -4,8 +4,8 @@
 //! стороны шара они сидят; в каждом слое порядок один: уши, рыло, глаза.
 
 use super::creature::{
-    INK, OUTLINE, OUTLINE_WIDTH, Pen, TONGUE, WHITE, cross, faces_viewer, toward_viewer,
-    turned_away,
+    INK, Leg, LegLayer, OUTLINE, OUTLINE_WIDTH, Pen, TONGUE, WHITE, cross, faces_viewer,
+    toward_viewer, turned_away,
 };
 use super::{Canvas, Color};
 use crate::math::Vec2;
@@ -80,10 +80,13 @@ pub(super) fn draw(canvas: &mut Canvas, pen: &Pen) {
         pen,
         frame: pen.pose.head_frame(),
     };
-    pig.legs(canvas, false);
+    let legs = pen.legs(HIP, LEG_MAX);
+    pig.legs(canvas, &legs, LegLayer::Back);
     pig.details(canvas, false);
     pig.pink(canvas);
-    pig.legs(canvas, true);
+    pig.legs(canvas, &legs, LegLayer::Middle);
+    pig.head(canvas);
+    pig.legs(canvas, &legs, LegLayer::Front);
     pig.details(canvas, true);
 }
 
@@ -104,7 +107,7 @@ impl Pig<'_> {
         self.on_head(EYE_AT, side) * (1.0 - EYE_SINK * away)
     }
 
-    /// Всё розовое одним цветом: швов между телом и головой нет.
+    /// Тело и шея; голова тем же цветом — швов нет.
     fn pink(&self, canvas: &mut Canvas) {
         let (pen, pose) = (self.pen, self.pen.pose);
         let body = pen.body();
@@ -116,36 +119,21 @@ impl Pig<'_> {
             let (a, b) = (pen.at(pose.neck[i - 1]), pen.at(pose.neck[i]));
             canvas.fill_capsule(a, b, radius, radius, PINK, 1.0);
         }
-        canvas.fill_circle(pen.at(pose.head.center), pose.head.radius, PINK, 1.0);
     }
 
-    /// Ноги по одну сторону от розового: `front` — те, что торчат к зрителю (на боку, на спине).
-    fn legs(&self, canvas: &mut Canvas, front: bool) {
-        let (pen, pose, body) = (self.pen, self.pen.pose, &self.pen.pose.body);
-        let out = 1.0 - pose.tuck;
-        // Поджатая наполовину нога короче, но не тоньше: тает только под телом
-        let k = pose.scale * (2.0 * out).min(1.0);
-        let frame = body.frame();
-        let forward = frame.forward * (body.radii[0] * HIP[0]);
-        let right = frame.right * (body.radii[1] * HIP[1]);
-        let down = frame.up * (-body.radii[2] * HIP[2]);
-        let belly_front = faces_viewer(down);
-        let pairs = [(pose.feet, -1.0), (pose.fore.unwrap_or(pose.feet), 1.0)];
-        for (feet, along) in pairs {
-            for (foot, side) in feet.into_iter().zip([-1.0, 1.0]) {
-                let hip = body.center + forward * along + right * side + down;
-                let reach = (foot - hip).length().max(f32::EPSILON);
-                // Отставшая на бегу нога не вытягивается: копыто отрывается от земли
-                let stretch = (LEG_MAX * pose.scale / reach).min(1.0);
-                let hoof = hip.lerp(foot, out * stretch);
-                if belly_front != front {
-                    continue;
-                }
-                let (a, b) = (pen.at(hoof), pen.at(hip));
-                canvas.fill_capsule(a, b, LEG_RADII[0] * k, LEG_RADII[1] * k, HOOF, 1.0);
-                if pose.look.mud > 0.0 {
-                    canvas.fill_circle(a, LEG_RADII[0] * k * MUD_HOOF, MUD, pose.look.mud);
-                }
+    fn head(&self, canvas: &mut Canvas) {
+        let (pen, head) = (self.pen, &self.pen.pose.head);
+        canvas.fill_circle(pen.at(head.center), head.radius, PINK, 1.0);
+    }
+
+    /// Ноги слоя от дальней к ближней.
+    fn legs(&self, canvas: &mut Canvas, legs: &[Leg], layer: LegLayer) {
+        let (pen, mud) = (self.pen, self.pen.pose.look.mud);
+        for leg in legs.iter().filter(|leg| leg.layer == layer) {
+            let (a, b, k) = (pen.at(leg.sole), pen.at(leg.top), leg.size);
+            canvas.fill_capsule(a, b, LEG_RADII[0] * k, LEG_RADII[1] * k, HOOF, 1.0);
+            if mud > 0.0 {
+                canvas.fill_circle(a, LEG_RADII[0] * k * MUD_HOOF, MUD, mud);
             }
         }
     }
@@ -171,7 +159,7 @@ impl Pig<'_> {
 
     /// Детали по одну сторону от розового: `front` — те, что поверх него.
     fn details(&self, canvas: &mut Canvas, front: bool) {
-        if (self.pen.pose.body.forward.y < 0.0) == front {
+        if self.pen.near_side(self.tail_points()[0]) == front {
             self.tail(canvas);
         }
         // Отвернулась — глаза за головой оба: на затылке глаз не бывает
@@ -201,12 +189,17 @@ impl Pig<'_> {
         }
     }
 
-    fn tail(&self, canvas: &mut Canvas) {
-        let (pen, body) = (self.pen, &self.pen.pose.body);
+    fn tail_points(&self) -> [Vec3; 2] {
+        let body = &self.pen.pose.body;
         let frame = body.frame();
         let back = frame.forward * -body.radii[0];
         let up = frame.up * body.radii[2];
-        let [root, tip] = TAIL.map(|[b, u]| pen.at(body.center + back * b + up * u));
+        TAIL.map(|[b, u]| body.center + back * b + up * u)
+    }
+
+    fn tail(&self, canvas: &mut Canvas) {
+        let pen = self.pen;
+        let [root, tip] = self.tail_points().map(|p| pen.at(p));
         let radius = TAIL_RADIUS * pen.pose.scale;
         canvas.fill_capsule(root, tip, radius, radius, ROSE, 1.0);
     }
@@ -325,6 +318,19 @@ mod tests {
         let (standing, ..) = render(&pig);
         let (sleeping, ..) = render(&tucked);
         assert!(solid(&standing, HOOF) > solid(&sleeping, HOOF));
+    }
+
+    #[test]
+    fn in_profile_far_legs_show_below_the_belly_and_near_ones_over_it() {
+        use crate::render::creature::test_support::{legs_over_body, one_side_legs};
+        let far = one_side_legs(RigKind::Pig, false);
+        let (pixels, w, _) = render(&far);
+        let (all, over) = legs_over_body(&far, &pixels, w, HOOF);
+        assert!(all > 20 && over == 0, "{all} {over}");
+        let near = one_side_legs(RigKind::Pig, true);
+        let (pixels, w, _) = render(&near);
+        let (all, over) = legs_over_body(&near, &pixels, w, HOOF);
+        assert!(all > 20 && over > 0, "{all} {over}");
     }
 
     #[test]

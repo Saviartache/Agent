@@ -4,8 +4,8 @@
 //! или поверх по той же стороне шара, что у свинки: уши, маска, мордочка, глаза.
 
 use super::creature::{
-    INK, MOUTH, OUTLINE, OUTLINE_WIDTH, Pen, TONGUE, WHITE, cross, faces_viewer, toward_viewer,
-    turned_away,
+    INK, Leg, LegLayer, MOUTH, OUTLINE, OUTLINE_WIDTH, Pen, TONGUE, WHITE, cross, faces_viewer,
+    toward_viewer, turned_away,
 };
 use super::{Canvas, Color};
 use crate::math::Vec2;
@@ -71,10 +71,13 @@ pub(super) fn draw(canvas: &mut Canvas, pen: &Pen) {
         pen,
         frame: pen.pose.head_frame(),
     };
-    raccoon.legs(canvas, false);
+    let legs = pen.legs(HIP, LEG_MAX);
+    raccoon.legs(canvas, &legs, LegLayer::Back);
     raccoon.details(canvas, false);
     raccoon.gray(canvas);
-    raccoon.legs(canvas, true);
+    raccoon.legs(canvas, &legs, LegLayer::Middle);
+    raccoon.head(canvas);
+    raccoon.legs(canvas, &legs, LegLayer::Front);
     raccoon.details(canvas, true);
 }
 
@@ -95,7 +98,7 @@ impl Raccoon<'_> {
         self.on_head(EYE_AT, side) * (1.0 - EYE_SINK * away)
     }
 
-    /// Всё серое одним цветом: швов между телом и головой нет.
+    /// Тело и шея; голова тем же цветом — швов нет.
     fn gray(&self, canvas: &mut Canvas) {
         let (pen, pose) = (self.pen, self.pen.pose);
         let body = pen.body();
@@ -105,37 +108,24 @@ impl Raccoon<'_> {
             let (a, b) = (pen.at(pose.neck[i - 1]), pen.at(pose.neck[i]));
             canvas.fill_capsule(a, b, radius, radius, GRAY, 1.0);
         }
-        canvas.fill_circle(pen.at(pose.head.center), pose.head.radius, GRAY, 1.0);
     }
 
-    /// Лапы по одну сторону от серого: `front` — те, что торчат к зрителю (на боку, на спине).
-    fn legs(&self, canvas: &mut Canvas, front: bool) {
-        let (pen, pose, body) = (self.pen, self.pen.pose, &self.pen.pose.body);
-        let out = 1.0 - pose.tuck;
-        let k = pose.scale * (2.0 * out).min(1.0);
-        let frame = body.frame();
-        let forward = frame.forward * (body.radii[0] * HIP[0]);
-        let right = frame.right * (body.radii[1] * HIP[1]);
-        let down = frame.up * (-body.radii[2] * HIP[2]);
-        if faces_viewer(down) != front {
-            return;
-        }
-        let pairs = [(pose.feet, -1.0), (pose.fore.unwrap_or(pose.feet), 1.0)];
-        for (feet, along) in pairs {
-            for (foot, side) in feet.into_iter().zip(SIDES) {
-                let hip = body.center + forward * along + right * side + down;
-                let reach = (foot - hip).length().max(f32::EPSILON);
-                let stretch = (LEG_MAX * pose.scale / reach).min(1.0);
-                let paw = hip.lerp(foot, out * stretch);
-                let (a, b) = (pen.at(paw), pen.at(hip));
-                canvas.fill_capsule(a, b, LEG_RADII[0] * k, LEG_RADII[1] * k, PAW, 1.0);
-            }
+    fn head(&self, canvas: &mut Canvas) {
+        let (pen, head) = (self.pen, &self.pen.pose.head);
+        canvas.fill_circle(pen.at(head.center), head.radius, GRAY, 1.0);
+    }
+
+    /// Лапы слоя от дальней к ближней.
+    fn legs(&self, canvas: &mut Canvas, legs: &[Leg], layer: LegLayer) {
+        for leg in legs.iter().filter(|leg| leg.layer == layer) {
+            let (a, b, k) = (self.pen.at(leg.sole), self.pen.at(leg.top), leg.size);
+            canvas.fill_capsule(a, b, LEG_RADII[0] * k, LEG_RADII[1] * k, PAW, 1.0);
         }
     }
 
     /// Детали по одну сторону от серого: `front` — те, что поверх него.
     fn details(&self, canvas: &mut Canvas, front: bool) {
-        if (self.pen.pose.body.forward.y < 0.0) == front {
+        if self.pen.near_side(self.on_back(TAIL[0])) == front {
             self.tail(canvas);
         }
         let away = turned_away(self.frame.forward);
@@ -172,13 +162,17 @@ impl Raccoon<'_> {
         }
     }
 
+    /// Точка у тела: назад и вверх от центра в долях полуосей.
+    fn on_back(&self, [back, up]: [f32; 2]) -> Vec3 {
+        let body = &self.pen.pose.body;
+        let frame = body.frame();
+        body.center + frame.forward * (-body.radii[0] * back) + frame.up * (body.radii[2] * up)
+    }
+
     /// Кольца от корня к кончику; кончик тёмный и отстаёт на пружине.
     fn tail(&self, canvas: &mut Canvas) {
-        let (pen, pose, body) = (self.pen, self.pen.pose, &self.pen.pose.body);
-        let frame = body.frame();
-        let back = frame.forward * -body.radii[0];
-        let up = frame.up * body.radii[2];
-        let [root, bend, tip] = TAIL.map(|[b, u]| body.center + back * b + up * u);
+        let (pen, pose) = (self.pen, self.pen.pose);
+        let [root, bend, tip] = TAIL.map(|at| self.on_back(at));
         let tip = tip + Vec3::on_ground(pose.tail, 0.0);
         // Сидя столбиком, хвост лежит на земле, а не уходит под неё
         let [root, bend, tip] = [root, bend, tip].map(|p| Vec3::new(p.x, p.y, p.z.max(0.0)));
@@ -348,6 +342,19 @@ mod tests {
         let mut tucked = raccoon.clone();
         tucked.tuck = 1.0;
         assert!(solid(&flat(&raccoon), PAW) > solid(&flat(&tucked), PAW));
+    }
+
+    #[test]
+    fn in_profile_far_legs_show_below_the_belly_and_near_ones_over_it() {
+        use crate::render::creature::test_support::{legs_over_body, one_side_legs};
+        let far = one_side_legs(RigKind::Raccoon, false);
+        let (pixels, w, _) = render(&far);
+        let (all, over) = legs_over_body(&far, &pixels, w, PAW);
+        assert!(all > 20 && over == 0, "{all} {over}");
+        let near = one_side_legs(RigKind::Raccoon, true);
+        let (pixels, w, _) = render(&near);
+        let (all, over) = legs_over_body(&near, &pixels, w, PAW);
+        assert!(all > 20 && over > 0, "{all} {over}");
     }
 
     #[test]
