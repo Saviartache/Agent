@@ -7,6 +7,7 @@ mod marks;
 mod pig;
 pub mod pixel;
 mod props;
+mod puddle;
 pub mod scene;
 pub mod shadow;
 

@@ -2,13 +2,13 @@
 //! Координаты мира — физические пиксели; холст знает лишь свой левый верхний угол.
 
 use super::shadow::{self, Oval};
-use super::{Canvas, Color, Sprite, creature, marks, pixel, props};
+use super::{Canvas, Color, Sprite, creature, marks, pixel, props, puddle};
 use crate::animation::SheetId;
 use crate::command::Tone;
 use crate::effects::{
     footprints::Footprints,
     leaves::{Leaves, SHADOW_GROW},
-    mud::{Liquid, Mud},
+    mud::Mud,
     particles::Particles,
     props::Props,
 };
@@ -97,20 +97,10 @@ const PRINT_COLOR: Color = Color(0x20_20_28);
 /// Грязный след жирнее и крупнее обычного: копыто несёт комок грязи.
 const MUD_PRINT_OPACITY: f32 = 0.8;
 const MUD_PRINT_GROW: f32 = 1.15;
-/// Лужа: тёмный край, сама грязь и блик в середине.
-const MUD_EDGE: Color = Color(0x57_38_1F);
-const MUD: Color = Color(0x6E_4A_2A);
-const MUD_GLOSS: Color = Color(0x8C_68_44);
 const MUD_PRINT: Color = Color(0x5E_3D_22);
-const WATER_EDGE: Color = Color(0x4F_86_BF);
-const WATER: Color = Color(0x7D_B3_E8);
-const WATER_GLOSS: Color = Color(0xCD_E6_FA);
 /// Каракули клювом: мел на рабочем столе, логические px.
 const SCRIBBLE: Color = Color(0x4A_55_65);
 const SCRIBBLE_RADIUS: f32 = 1.6;
-const MUD_INNER: f32 = 0.8;
-const GLOSS_AT: Vec2 = Vec2::new(-0.3, -0.3);
-const GLOSS_SIZE: f32 = 0.3;
 
 /// Не уже, чем даёт мягкий край круга.
 const EDGE: f32 = 1.0;
@@ -167,7 +157,7 @@ pub fn effects_rect(effects: &Effects<'_>, ui_scale: f32) -> Option<Rect> {
         scribble.bounds((SCRIBBLE_RADIUS + EDGE) * ui_scale),
         particles.bounds().map(|rect| rect.inflate(bleed)),
         leaves.bounds().map(|rect| rect.inflate(EDGE)),
-        mud.bounds().map(|rect| rect.inflate(EDGE)),
+        mud.bounds().map(|rect| rect.inflate(bleed)),
         props.bounds().map(|rect| rect.inflate(bleed)),
         flock,
     ]
@@ -189,7 +179,8 @@ pub fn effects_rect(effects: &Effects<'_>, ui_scale: f32) -> Option<Rect> {
 /// `origin` — мировая точка левого верхнего угла холста.
 pub fn draw_effects(canvas: &mut Canvas, origin: Vec2, effects: &Effects<'_>, ui_scale: f32) {
     // Лужа и грязь лежат на земле ниже всего
-    draw_mud(canvas, origin, effects.mud);
+    let cell = pixel::cell(ui_scale);
+    puddle::draw(canvas, origin, effects.mud, cell);
     for print in effects.mud_prints.iter() {
         canvas.fill_circle(
             print.pos - origin,
@@ -203,7 +194,6 @@ pub fn draw_effects(canvas: &mut Canvas, origin: Vec2, effects: &Effects<'_>, ui
         canvas.fill_circle(mark.pos - origin, radius, SCRIBBLE, mark.opacity);
     }
     // Тени — первыми: листья горки висят над своими тенями, и куча читается объёмной
-    let cell = pixel::cell(ui_scale);
     props::shadows(canvas, origin, effects.props, cell);
     for leaf in effects.leaves.iter() {
         let spot = Oval {
@@ -235,25 +225,6 @@ pub fn draw_effects(canvas: &mut Canvas, origin: Vec2, effects: &Effects<'_>, ui
         marks::draw(canvas, origin, &particle);
     }
     pixel::pixelate(canvas, origin, ui_scale);
-}
-
-/// Каждый тон — слоем по всем долям: края долей не ложатся поверх грязи соседних.
-fn draw_mud(canvas: &mut Canvas, origin: Vec2, mud: &Mud) {
-    for puddle in mud.iter() {
-        let [edge, body, gloss_color] = match puddle.liquid {
-            Liquid::Mud => [MUD_EDGE, MUD, MUD_GLOSS],
-            Liquid::Water => [WATER_EDGE, WATER, WATER_GLOSS],
-        };
-        for (center, radii) in puddle.ellipses() {
-            canvas.fill_ellipse(center - origin, radii, 0.0, edge, 1.0);
-        }
-        for (center, radii) in puddle.ellipses() {
-            canvas.fill_ellipse(center - origin, radii * MUD_INNER, 0.0, body, 1.0);
-        }
-        let core = puddle.lobes[0].radii * puddle.size;
-        let gloss = puddle.center - origin + Vec2::new(core.x * GLOSS_AT.x, core.y * GLOSS_AT.y);
-        canvas.fill_ellipse(gloss, core * GLOSS_SIZE, 0.0, gloss_color, 1.0);
-    }
 }
 
 // --- карточка ---
@@ -636,7 +607,10 @@ mod tests {
                 .count();
             assert!(drawn > 0);
             assert_eq!(leaked(&canvas, rect.width as i32, rect.height as i32), 0);
-            let mud = pixels.iter().filter(|p| **p == 0xFF00_0000 | MUD.0).count();
+            let mud = pixels
+                .iter()
+                .filter(|p| **p == 0xFF00_0000 | puddle::MUD_TONES[1].0)
+                .count();
             assert!(mud > 100, "{mud}");
         }
     }
