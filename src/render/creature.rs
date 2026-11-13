@@ -81,15 +81,20 @@ pub(super) fn cross(canvas: &mut Canvas, center: Vec2, radius: f32, width: f32) 
     canvas.fill_capsule(center - e, center + e, width, width, INK, 1.0);
 }
 
+/// Смещение от центра головы на экране: проекция камеры, а не сжатие тела.
+fn head_flat(offset: Vec3) -> Vec2 {
+    Vec2::new(offset.x, offset.y * VIEW_SIN - offset.z * VIEW_COS)
+}
+
 pub(super) struct Pen<'a> {
     pub origin: Vec2,
     pub pose: &'a Pose,
 }
 
-/// Силуэт эллипсоида с осями `axes`.
-fn silhouette(center: Vec2, axes: [Vec3; 3]) -> Oval {
+/// Силуэт эллипсоида или плоского эллипса по полуосям на экране.
+fn silhouette<const N: usize>(center: Vec2, axes: [Vec2; N]) -> Oval {
     let (mut xx, mut yy, mut xy) = (0.0, 0.0, 0.0);
-    for a in axes.map(flatten) {
+    for a in axes {
         xx += a.x * a.x;
         yy += a.y * a.y;
         xy += a.x * a.y;
@@ -112,8 +117,12 @@ impl Pen<'_> {
     /// Точка на голове, отложенная от её центра на `offset`. Голова рисуется
     /// кругом, поэтому точка кладётся проекцией шара, а не сжатием тела.
     pub fn on_head(&self, offset: Vec3) -> Vec2 {
-        let flat = Vec2::new(offset.x, offset.y * VIEW_SIN - offset.z * VIEW_COS);
-        self.at(self.pose.head.center) + flat
+        self.at(self.pose.head.center) + head_flat(offset)
+    }
+
+    /// Плоский эллипс у головы: центр от её центра и полуоси, той же проекцией.
+    pub fn disc_on_head(&self, offset: Vec3, axes: [Vec3; 2]) -> Oval {
+        silhouette(self.on_head(offset), axes.map(head_flat))
     }
 
     pub fn body(&self) -> Oval {
@@ -128,7 +137,7 @@ impl Pen<'_> {
             frame.right * radii[1],
             frame.up * radii[2],
         ];
-        silhouette(self.at(center), axes)
+        silhouette(self.at(center), axes.map(flatten))
     }
 
     /// Пятно под телом; в прыжке и в руках оно меньше и бледнее.
@@ -138,7 +147,7 @@ impl Pen<'_> {
         let forward = Vec3::on_ground(body.forward * (body.radii[0] * k), 0.0);
         let right = Vec3::new(-body.forward.y, body.forward.x, 0.0) * (body.footprint_width() * k);
         let ground = Vec3::on_ground(body.center.ground(), 0.0);
-        let oval = silhouette(pose.screen(ground), [forward, right, Vec3::ZERO]);
+        let oval = silhouette(pose.screen(ground), [forward, right].map(flatten));
         let (cell, opacity) = (pixel::cell(pose.scale), shadow::OPACITY * pose.shadow);
         shadow::dotted(canvas, self.origin, &oval, cell, opacity);
     }

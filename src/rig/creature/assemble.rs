@@ -2,11 +2,12 @@
 
 use std::f32::consts::{FRAC_PI_2, TAU};
 
-use super::Creature;
 use super::build::Build;
+use super::ear::{self, EarShape};
 use super::feet::Feet;
 use super::head::Aim;
 use super::pose::{Body, Head, NECK_POINTS, Pose};
+use super::{Antic, Creature};
 use crate::math::Vec2;
 use crate::rig::vec3::{Frame, Vec3};
 
@@ -242,6 +243,23 @@ impl Creature {
         Some((root, Vec3::new(ahead.x, ahead.y, -drop)))
     }
 
+    /// Крылья, уши, ласты: накладка, а у кого они от жестов — и жест.
+    fn wings(&self) -> f32 {
+        let gesture = if self.build().gesture_wings {
+            self.mods.wings
+        } else {
+            0.0
+        };
+        self.antic.wings.max(gesture)
+    }
+
+    /// Куда тянется раскрытие ушей, рад: на ходу в такт шагу, в прыжке, от взмаха.
+    pub(super) fn ear_open(&self, shape: &EarShape) -> f32 {
+        let stride = (self.feet.lift(0) - self.feet.lift(1)).abs() / self.scale;
+        let spread = ear::spread(stride, self.mods.hop, self.wings(), self.antic.flap);
+        shape.open[0] + (shape.open[1] - shape.open[0]) * spread
+    }
+
     pub(super) fn aim(
         &self,
         accel: Vec2,
@@ -279,10 +297,10 @@ impl Creature {
             .zip(self.trunk.as_ref())
             .map(|((root, _), tip)| [root, root + tip.rel()]);
         let rock = self.rock();
-        let mut antic = self.antic;
-        if build.gesture_wings {
-            antic.wings = antic.wings.max(m.wings);
-        }
+        let antic = Antic {
+            wings: self.wings(),
+            ..self.antic
+        };
         let mut pose = Pose {
             kind: self.kind,
             pos: self.pos,
@@ -313,6 +331,7 @@ impl Creature {
                 .zip(build.fore.as_ref())
                 .map(|(feet, fore)| pair(feet, fore.along)),
             trunk,
+            ears: None,
             tail: self.tail.lag(),
             shadow: 1.0 / (1.0 + lift / SHADOW_HALF),
             tuck: m.tuck.clamp(0.0, 1.0),
@@ -320,6 +339,10 @@ impl Creature {
             antic,
             look: self.look,
         };
+        pose.ears = self.ears.zip(build.ears.as_ref()).map(|(ears, shape)| {
+            let head = &pose.head;
+            ears.place(shape, &pose.head_frame(), head.center, head.radius)
+        });
         if self.size != 1.0 {
             pose.zoomed(self.size);
         }

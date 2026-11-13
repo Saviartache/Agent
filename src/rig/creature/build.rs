@@ -1,5 +1,6 @@
 //! Сложение вида: чем виды отличаются при общем скелете.
 
+use super::ear::EarShape;
 use super::feet::Stance;
 use crate::math::Vec2;
 use crate::rig::RigKind;
@@ -38,6 +39,8 @@ pub struct Build {
     pub dangle_down: f32,
     /// Хобот слона: вместо клюва и рыла.
     pub trunk: Option<Trunk>,
+    /// Уши-лопухи слона.
+    pub ears: Option<EarShape>,
     /// Крадётся: на ходу тело ниже стойки на столько.
     pub prowl: f32,
     /// Доля обычного шага: длина, высота подъёма лапы и время.
@@ -82,6 +85,7 @@ const GOOSE: Build = Build {
     dangle_side: 4.5,
     dangle_down: 12.0,
     trunk: None,
+    ears: None,
     prowl: 0.0,
     stride: 1.0,
     waddle: 0.0,
@@ -115,6 +119,7 @@ const PIG: Build = Build {
     dangle_side: 5.0,
     dangle_down: 11.0,
     trunk: None,
+    ears: None,
     prowl: 0.0,
     stride: 1.0,
     waddle: 0.0,
@@ -152,10 +157,16 @@ const ELEPHANT: Build = Build {
         gain: 2.2,
         slack: 0.6,
     }),
+    ears: Some(EarShape {
+        root: [0.7, -0.4, 0.2],
+        radii: [0.68, 0.88],
+        open: [0.8, 1.6],
+    }),
     prowl: 0.0,
     stride: 1.0,
     waddle: 0.0,
-    gesture_wings: false,
+    // Уши хлопают на радости и раскрываются на бегу
+    gesture_wings: true,
 };
 
 /// Такса: длинное низкое тело на очень коротких ногах, заметная шея, вытянутая морда.
@@ -184,6 +195,7 @@ const DACHSHUND: Build = Build {
     dangle_side: 3.8,
     dangle_down: 8.5,
     trunk: None,
+    ears: None,
     prowl: 0.0,
     stride: 1.0,
     waddle: 0.0,
@@ -217,6 +229,7 @@ const RACCOON: Build = Build {
     dangle_side: 4.5,
     dangle_down: 10.0,
     trunk: None,
+    ears: None,
     prowl: 3.5,
     stride: 1.0,
     waddle: 0.0,
@@ -247,6 +260,7 @@ const PENGUIN: Build = Build {
     dangle_side: 4.0,
     dangle_down: 13.0,
     trunk: None,
+    ears: None,
     prowl: 0.0,
     stride: 0.55,
     waddle: 0.28,
