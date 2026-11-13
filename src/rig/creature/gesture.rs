@@ -66,6 +66,8 @@ mods! {
     /// Растяжение тела минус единица: вдоль и вбок, по высоте.
     stretch_x,
     stretch_y,
+    /// 0..1: размах виляния хвостом.
+    wag,
 }
 
 impl Mods {
@@ -86,6 +88,7 @@ impl Mods {
         self.wobble += antic.wobble;
         self.lids = self.lids.max(antic.lids);
         self.tuck = self.tuck.max(antic.tuck);
+        self.wag = self.wag.max(antic.wag);
     }
 }
 
@@ -145,6 +148,7 @@ pub fn target(gesture: Gesture, progress: f32, clock: f32, run: f32) -> Mods {
             m.hop = 7.0 * pulse(p, 0.0, 0.45);
             m.neck_up = 3.0 * honk;
             m.head_pitch = 0.4 * honk;
+            m.wag = envelope(p);
         }
         Gesture::Interact => peck(&mut m, pulse(p, 0.15, 0.75), 26.0, 12.0),
         Gesture::Celebrate => {
@@ -152,6 +156,7 @@ pub fn target(gesture: Gesture, progress: f32, clock: f32, run: f32) -> Mods {
             m.hop = 6.0 * hop;
             m.neck_up = 3.0 * hop;
             m.head_pitch = 0.3 * hop;
+            m.wag = 1.0;
         }
         Gesture::Think => {
             m.head_roll = 0.38;

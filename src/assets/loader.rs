@@ -65,6 +65,7 @@ impl Character {
         let manifest = match kind {
             RigKind::Goose => include_str!("../../assets/goose/agent.json"),
             RigKind::Pig => include_str!("../../assets/pig/agent.json"),
+            RigKind::Dachshund => include_str!("../../assets/dachshund/agent.json"),
         };
         Self::from_source(manifest, &|_| Err(io::ErrorKind::NotFound.into()))
     }

@@ -51,6 +51,8 @@ pub struct Antic {
     pub flap: f32,
     /// 0…1: шея гуся завязана узлом.
     pub knot: f32,
+    /// 0…1: виляет хвостом.
+    pub wag: f32,
 }
 
 impl Default for Antic {
@@ -77,6 +79,7 @@ impl Default for Antic {
             wings: 0.0,
             flap: 0.0,
             knot: 0.0,
+            wag: 0.0,
         }
     }
 }
@@ -105,6 +108,7 @@ impl Antic {
             self.wings,
             self.flap,
             self.knot,
+            self.wag,
         ];
         if fields.iter().all(|v| v.is_finite()) && self.squash.x > 0.0 && self.squash.y > 0.0 {
             self

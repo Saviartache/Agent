@@ -1,5 +1,5 @@
 //! Сценки: персонаж сам разыгрывает что-то с предметами, курсором или запиской.
-//! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`);
+//! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`, `dachshund/`);
 //! чья сценка, решает `Stunt::cast`. Новая сценка — вариант `Stunt`, файл со своим
 //! состоянием и методами `begin_*`/`step_*` и строка в `acts!` здесь.
 //!
@@ -7,6 +7,7 @@
 //! (`Sim::drive`), гусята (`Sim::flock`) и накладка гаснут вместе со сценкой.
 
 mod common;
+mod dachshund;
 mod goose;
 mod pig;
 mod reflex;
@@ -127,6 +128,10 @@ acts! {
     TailChase: pig::tail_chase::TailChase => begin_tail_chase, step_tail_chase;
     PiggyBank: pig::piggy_bank::PiggyBank => begin_piggy_bank, step_piggy_bank;
     BellyUp: pig::belly_up::BellyUp => begin_belly_up, step_belly_up;
+    Slipper: dachshund::slipper::Slipper => begin_slipper, step_slipper;
+    Burrow: dachshund::burrow::Burrow => begin_burrow, step_burrow;
+    UTurn: dachshund::u_turn::UTurn => begin_u_turn, step_u_turn;
+    Yap: dachshund::yap::Yap => begin_yap, step_yap;
 }
 
 /// Итог шага сценки.
@@ -291,6 +296,7 @@ impl Sim {
         match self.character.rig() {
             Some(RigKind::Goose) => goose::NOTES,
             Some(RigKind::Pig) => pig::NOTES,
+            Some(RigKind::Dachshund) => dachshund::NOTES,
             None => common::NOTES,
         }
     }

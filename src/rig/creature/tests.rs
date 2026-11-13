@@ -635,6 +635,29 @@ fn antic_garbage_stays_finite() {
 }
 
 #[test]
+fn dachshund_wags_only_when_glad_and_its_head_rides_a_neck() {
+    let mut dog = Rig::of(RigKind::Dachshund, 7);
+    let swing = |dog: &mut Rig| {
+        (0..60)
+            .map(|_| {
+                dog.tick(DT);
+                dog.goose.pose().wag.abs()
+            })
+            .fold(0.0, f32::max)
+    };
+    dog.run(1.0, DT);
+    assert_eq!(swing(&mut dog), 0.0);
+    let pose = dog.goose.pose();
+    // Голова выше спины над грудью: шея заметна
+    let ahead = (pose.head.center - pose.body.center).dot(Vec3::new(1.0, 0.0, 0.0));
+    assert!(pose.head.center.z > pose.body.center.z + pose.body.radii[2]);
+    assert!(ahead > 0.8 * pose.body.radii[0], "{ahead}");
+    dog.input.gesture = Gesture::Celebrate;
+    dog.run(0.3, DT);
+    assert!(swing(&mut dog) > 0.8);
+}
+
+#[test]
 fn poses_with_antic_stay_within_extent() {
     let cases = [
         antic(|a| a.roll = PI),

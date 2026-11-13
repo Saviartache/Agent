@@ -106,12 +106,13 @@ impl Notification {
 const COMMON: Option<RigKind> = None;
 const GOOSE: Option<RigKind> = Some(RigKind::Goose);
 const PIG: Option<RigKind> = Some(RigKind::Pig);
+const DACHSHUND: Option<RigKind> = Some(RigKind::Dachshund);
 
 /// Таблица сценок: вариант, имя, чья, озорная.
 macro_rules! stunts {
     ($($(#[$doc:meta])* $variant:ident = $name:literal, $cast:ident $(, $naughty:ident)?;)*) => {
         /// Сценка, которую персонаж разыгрывает сам. Общие доступны всем, видовые — только
-        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig}/`.
+        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,dachshund}/`.
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub enum Stunt {
             $($(#[$doc])* $variant,)*
@@ -252,6 +253,14 @@ stunts! {
     PiggyBank = "piggy_bank", PIG;
     /// Свинка: ножками вверх, дрыгает.
     BellyUp = "belly_up", PIG;
+    /// Такса: находит тапок, треплет и приносит к курсору.
+    Slipper = "slipper", DACHSHUND;
+    /// Такса: роет нору у края экрана и ныряет в неё.
+    Burrow = "burrow", DACHSHUND;
+    /// Такса: длинное тело застревает на развороте.
+    UTurn = "u_turn", DACHSHUND;
+    /// Такса: тявкает на курсор.
+    Yap = "yap", DACHSHUND;
 }
 
 impl Stunt {
