@@ -2,21 +2,20 @@
 #
 # build-package.sh — собрать пакет с персонажем рабочего стола для Windows x64.
 #
-#   1) cargo build --release --target x86_64-pc-windows-gnu -p ui-agent --example desktop_agent
-#      (персонаж по умолчанию вшивается через UI_AGENT_RIG)
+#   1) cargo build --release --target x86_64-pc-windows-gnu --manifest-path console/Cargo.toml
+#      (живая консоль-меню, свой воркспейс; в бинарнике все персонажи, смена — в меню)
 #   2) upx --best --lzma (жмём КОПИЮ в staging, не трогая cargo-output)
-#   3) архив dist/ui-agent-<персонаж>-win64.zip (ui-agent-<персонаж>.exe + README.txt)
+#   3) архив dist/ui-agent-win64.zip (ui-agent.exe + README.txt)
 #
 # Использование:
-#   ./scripts/build-package.sh pig              # свинка, со сжатием
-#   ./scripts/build-package.sh goose --no-upx   # гусь, без сжатия
+#   ./scripts/build-package.sh            # со сжатием
+#   ./scripts/build-package.sh --no-upx   # без сжатия
 
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 TARGET="x86_64-pc-windows-gnu"
-RIG=""
 USE_UPX=1
 
 fail() { printf '  ✗ %s\n' "$*" >&2; exit 1; }
@@ -24,7 +23,6 @@ step() { printf '  ▸ %s\n' "$*"; }
 
 for arg in "$@"; do
     case "$arg" in
-        goose|pig) RIG="$arg" ;;
         --no-upx) USE_UPX=0 ;;
         -h|--help)
             sed -n '3,/^$/{/^$/!p;}' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -34,15 +32,9 @@ for arg in "$@"; do
     esac
 done
 
-case "$RIG" in
-    goose) NAME="гусь"; OTHER="pig" ;;
-    pig) NAME="свинка"; OTHER="goose" ;;
-    *) fail "укажи персонажа: goose или pig" ;;
-esac
-
-STAGE="dist/ui-agent-$RIG"
+STAGE="dist/ui-agent"
 ARCHIVE="$STAGE-win64.zip"
-EXE="$STAGE/ui-agent-$RIG.exe"
+EXE="$STAGE/ui-agent.exe"
 
 step "проверяю инструментарий"
 command -v cargo >/dev/null || fail "cargo не найден"
@@ -54,17 +46,21 @@ if [ "$USE_UPX" -eq 1 ]; then
     command -v upx >/dev/null || fail "upx не найден (brew install upx), либо запусти с --no-upx"
 fi
 
-step "cargo build --release --target $TARGET -p ui-agent --example desktop_agent ($RIG)"
-UI_AGENT_RIG="$RIG" cargo build --release --target "$TARGET" -p ui-agent --example desktop_agent
+MANIFEST="console/Cargo.toml"
+# Пути машины сборки не должны попасть в строки бинарника
+RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=$HOME=~ --remap-path-prefix=$PWD=ui-agent"
+export RUSTFLAGS
 
-# В submodule-е target общий с хозяином
-TARGET_DIR="$(cargo metadata --format-version 1 --no-deps | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')"
+step "cargo build --release --target $TARGET --manifest-path $MANIFEST"
+cargo build --release --locked --target "$TARGET" --manifest-path "$MANIFEST"
+
+TARGET_DIR="$(cargo metadata --manifest-path "$MANIFEST" --format-version 1 --no-deps | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')"
 [ -n "$TARGET_DIR" ] || fail "cargo metadata не назвал target_directory"
 
 step "staging $STAGE"
 rm -rf "$STAGE" "$ARCHIVE"
 mkdir -p "$STAGE"
-cp "$TARGET_DIR/$TARGET/release/examples/desktop_agent.exe" "$EXE"
+cp "$TARGET_DIR/$TARGET/release/ui-agent-console.exe" "$EXE"
 
 if [ "$USE_UPX" -eq 1 ]; then
     step "upx --best --lzma $(basename "$EXE")"
@@ -73,30 +69,39 @@ if [ "$USE_UPX" -eq 1 ]; then
 fi
 
 cat > "$STAGE/README.txt" <<TEXT
-Персонаж рабочего стола: $NAME (ui-agent-$RIG.exe), Windows 10/11 x64
+Персонаж рабочего стола (ui-agent.exe): свинка или гусь, Windows 10/11 x64
 
-Запуск: двойной щелчок или из консоли. Персонаж появляется поверх рабочего стола,
-ходит сам, замечает курсор, его можно щёлкнуть и перетащить.
+Запуск: двойной щелчок. Персонаж появляется поверх рабочего стола, ходит сам,
+замечает курсор, его можно щёлкнуть и перетащить. В окне консоли — живое меню:
+слева разделы, в середине пункты, справа журнал событий.
 
-Управление:
-  правая кнопка по персонажу   меню: Пауза / Скрыть / Выход
-  в консоли (запускать из cmd): help — список команд. Главное:
-    all                    прогнать все действия, состояния, режимы, карточки и сценку
-    play <действие>        одно действие; имена — actions
-    hold <действие>        держать действие как своё состояние; release — отпустить
-    leaves                 куча листьев, в которую персонаж вбегает с разбега
-    random                 что-нибудь случайное
-    status <состояние>     normal | thinking | busy | success | warning | error
-    mode <режим>           wander | stay | follow | chase | sleep
-    notify <тон> <текст>   info | success | warning | error
-    move <x> <y>, spawn, despawn, stop
-    p — пауза, h — скрыть/показать, q — выход
+Разделы:
+  Персонаж    сменить тело (гусь / свинка) на лету, включить перехват курсора
+  Действия    сыграть одно действие
+  Держать     держать действие как своё состояние; «отпустить»
+  Сценки      разыграть сценку
+  Состояние   обычное, думает, занят, успех, предупреждение, ошибка
+  Режим       гуляет, стоит, идёт или гонится за курсором, спит
+  Карточки    принести карточку любого тона
+  Прогоны     всё подряд, короткий сценарий, что-нибудь случайное, стоп
+  Окно        появиться, уйти, пауза, скрыть, в фон, выход
 
-Ключи:
-  --grab          разрешить персонажу ненадолго уводить курсор (по умолчанию выключено;
-                  отпускает по кнопке мыши или Esc)
-  --rig $OTHER    другой персонаж
+Клавиши: ↑↓ — пункт, ←→ или 1–9 — раздел, Enter — выполнить; мышью — щелчок по
+пункту. p — пауза, h — скрыть/показать, r — случайное, s — остановить прогон,
+b — в фон, q или Esc — выход. Правая кнопка по персонажу — меню: Пауза / Скрыть / Выход.
+
+В фон: консоль закрывается совсем, персонаж живёт дальше фоновым процессом.
+Управление тогда — его меню по правой кнопке: «Выход» завершает процесс,
+«Скрыть» возвращает консоль с меню.
+
+Перехват курсора: персонаж ненадолго уводит курсор (по умолчанию выключено;
+отпускает по кнопке мыши или Esc).
+
+Ключи запуска:
+  --rig goose     начать с гусём (по умолчанию свинка)
+  --grab          сразу с перехватом курсора
   --pack <папка>  свой набор спрайтов
+  --background    без консоли (так запускает себя пункт «в фон»)
 TEXT
 
 step "архив $ARCHIVE"

@@ -166,8 +166,9 @@ cargo run -p ui-agent --example preview_rig -- goose out.png idle,walk,celebrate
 # Сценка кадрами
 cargo run -p ui-agent --example preview_stunt -- pig mud_bath out.png --ui 2 --crop 260,150
 
-# Готовый пакет .exe + README в dist/ (нужны mingw-w64, zip и upx)
-./scripts/build-package.sh goose
+# Готовый пакет .exe + README в dist/: живая консоль-меню, тело меняется на лету,
+# есть фоновый режим без консоли (нужны mingw-w64, zip и upx)
+./scripts/build-package.sh
 ```
 
 В консоли демо есть команда `help`. Главные команды: `all` прогоняет всё по очереди,

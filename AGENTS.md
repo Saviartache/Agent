@@ -40,7 +40,9 @@ cargo clippy -p ui-agent --all-targets -- -D warnings
 cargo clippy -p ui-agent --all-targets --target x86_64-pc-windows-gnu -- -D warnings
 cargo run -p ui-agent --example preview_rig -- pig out.png # вид тела кадрами (pig | goose)
 cargo run -p ui-agent --example preview_stunt -- pig oops out.png --ui 3 --crop 140,110  # сценка кадрами
-./scripts/build-package.sh pig                             # тестовый пакет в dist/ (pig | goose)
+./scripts/build-package.sh                                 # тестовый пакет в dist/ (оба персонажа)
+cargo test --manifest-path console/Cargo.toml              # консоль пакета (свой воркспейс)
+cargo clippy --manifest-path console/Cargo.toml --all-targets --target x86_64-pc-windows-gnu -- -D warnings
 ```
 
 Тесты `platform`/`agent` требуют рабочего стола Windows: на другой машине они только

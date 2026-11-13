@@ -1,0 +1,22 @@
+[package]
+name = "ui-agent-console"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+description = "Пакет персонажа: живая консоль, где тело и команды выбираются из меню"
+publish = false
+
+# Свой воркспейс: зависимости консоли не попадают ни в библиотеку, ни к хозяину
+[workspace]
+
+[dependencies]
+ratatui = "0.30"
+ui-agent = { path = ".." }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

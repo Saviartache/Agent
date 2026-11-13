@@ -32,8 +32,6 @@ mod demo {
         Status, Stunt, Tone, Vec2, rig::RigKind,
     };
 
-    /// Персонаж пакета: задаётся при сборке (`scripts/build-package.sh`).
-    const DEFAULT_RIG: Option<&str> = option_env!("UI_AGENT_RIG");
     const POLL: Duration = Duration::from_millis(50);
     /// Пауза между шагами прогона: анимация успевает доиграть.
     const STEP_GAP: Duration = Duration::from_millis(2600);
@@ -119,9 +117,7 @@ mod demo {
     fn options() -> Result<Options, String> {
         let mut options = Options {
             pack: None,
-            rig: DEFAULT_RIG
-                .and_then(RigKind::from_name)
-                .unwrap_or(RigKind::Pig),
+            rig: RigKind::Pig,
             grab: false,
         };
         let mut args = std::env::args().skip(1);

@@ -1,6 +1,9 @@
 /target
+/console/target
 /dist
 .DS_Store
 
 # The lockfile of a library is not authoritative — hosts resolve their own.
 Cargo.lock
+# The packaged console is an application: its lockfile pins the build.
+!/console/Cargo.lock
