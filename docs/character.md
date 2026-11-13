@@ -29,6 +29,7 @@ src/companion.rs    Companion — спутник окна приложения: 
 src/assets/         разбор набора (agent.json [+ PNG]) в Character; встроенные наборы — свинка, гусь и такса
 src/assets/         разбор набора (agent.json [+ PNG]) в Character; встроенные наборы — свинка, гусь, слоник
 src/assets/         разбор набора (agent.json [+ PNG]) в Character; встроенные наборы — свинка, гусь и енот
+src/assets/         разбор набора (agent.json [+ PNG]) в Character; встроенные наборы — свинка, гусь и пингвин
 src/animation/      клип, проигрыватель (приоритеты, маркеры), твины
 src/motion/         тело и рулёжка (приход, преследование, бегство, блуждание)
 src/behavior/       мозг (FSM), планировщик намерений, предохранитель захвата курсора
@@ -53,6 +54,12 @@ src/render/         холст (premultiplied 0xAARRGGBB), scene — чиста�
                     shadow — общая тень точками, pixel — общая мозаика
 src/sim/            Sim — детерминированная симуляция: мозг+движение+анимация+эффекты
 src/sim/stunt/      сценки: mod.rs — запуск, шаг, выбор; common/ — общие, goose/, pig/, raccoon/ — видовые
+                    вид (RigKind: goose, pig, penguin) — сложение в creature/build.rs
+src/render/         холст (premultiplied 0xAARRGGBB), scene — чистая отрисовка; creature — общее
+                    для тел (холст, тень, проекция), goose, pig и penguin — сами виды;
+                    shadow — общая тень точками, pixel — общая мозаика
+src/sim/            Sim — детерминированная симуляция: мозг+движение+анимация+эффекты
+src/sim/stunt/      сценки: mod.rs — запуск, шаг, выбор; common/ — общие, goose/, pig/, penguin/ — видовые
 src/platform/       Win32: окна, поверхности DIB, текст GDI, курсор, мониторы, цикл ожидания
 src/runtime/        поток персонажа: команды, события окон, кадр, отрисовка, таймер
 src/agent.rs        дескриптор Agent (очереди и пробуждение)
@@ -60,6 +67,7 @@ examples/desktop_agent.rs   демонстрация;
 examples/preview_rig.rs     контактный лист тела (pig | goose | dachshund) в PNG для проверки глазами
 examples/preview_rig.rs     контактный лист тела (pig | goose | elephant) в PNG для проверки глазами
 examples/preview_rig.rs     контактный лист тела (pig | goose | raccoon) в PNG для проверки глазами
+examples/preview_rig.rs     контактный лист тела (pig | goose | penguin) в PNG для проверки глазами
 console/            пакет scripts/build-package.sh: живая консоль-меню на ratatui, свой воркспейс
                     (её зависимости не попадают ни в библиотеку, ни к хозяину)
 ```
@@ -175,6 +183,11 @@ companion.tick();                                // выходки и событ
   `Companion` показывает **свинку**. Скелет у видов общий (`rig/creature`), вид
   задаёт сложение (`creature/build.rs`) и рисовальщик (`render/goose.rs`, `render/pig.rs`,
   `render/raccoon.rs`):
+- **Процедурное тело** — `"rig": "goose"`, `"pig"` или `"penguin"` в `agent.json` (`Character::rig()`).
+  Это встроенные наборы (`Character::builtin(RigKind)`, `assets/<вид>/agent.json`, PNG нет);
+  `Companion` показывает **свинку**. Скелет у видов общий (`rig/creature`), вид
+  задаёт сложение (`creature/build.rs`) и рисовальщик (`render/goose.rs`, `render/pig.rs`,
+  `render/penguin.rs`):
   - *гусь* — две лапы, длинная шея, голова на пружине; поднятая шея выгнута назад, опущенная —
     дугой вперёд от груди, без горба над спиной; голова, опускаясь вперёд, идёт дугой и не
     втягивает шею. Клюв к земле — `peck_pose` (кончик в 26 px перед телом), свинка опускает
@@ -220,6 +233,16 @@ companion.tick();                                // выходки и событ
     Морда к земле между передними лапами — `paws_down` (кончик в 20 px перед телом). Охотнее
     всех гоняется за курсором (`chase_cursor_weight` 1,8, пауза 20 с вместо 45) — значит, чаще
     и крадёт его (`CursorHeist`), если захват разрешён; подарок у него — монетка.
+  - *пингвин* — тело гуся, поставленное торчком (`body_pitch` 1,45 рад: продольная ось — рост,
+    «спина» тела смотрит назад, живот — вперёд), шеи нет — голова сидит на макушке, жесты шеи в
+    0,3 от гусиных; клюв гусиный. **Вразвалку**: шаг вдвое короче и чаще (`stride` 0,55 — длина,
+    высота и время шага), тело клонится к опорной лапе (`waddle` 0,28 рад, `Body::rock`), голова —
+    вместе с ним. Боком не ходит. Ласты оттопыриваются от бега и хлопают на радости
+    (`Build::gesture_wings`: жест пишет `Antic::wings` сам; гусь раскрывает крылья только в
+    сценках), поэтому на `Success` пингвин аплодирует. Завалившись (`roll`), тело торчком
+    ложится вдоль земли — стойка гаснет с `cos roll`, и «на спине» значит животом вверх, а не
+    вверх ногами; сжатие по росту (`squash.y`) идёт вдоль продольной оси, лапы висят отвесно.
+    Ничком (сценки пингвина) — `antic.pitch` −1,45 и присед 5. Подарок — камешек.
 
   Тело рисуется из примитивов
   каждый кадр: лапы шагают и встают на землю (след — в точке приземления), шея и голова идут
@@ -239,6 +262,7 @@ companion.tick();                                // выходки и событ
 Проверка вида: `cargo run -p ui-agent --example preview_rig -- <pig|goose|dachshund> out.png [cycle,react,…]`
 Проверка вида: `cargo run -p ui-agent --example preview_rig -- <pig|goose|elephant> out.png [cycle,react,…]`
 Проверка вида: `cargo run -p ui-agent --example preview_rig -- <pig|goose|raccoon> out.png [cycle,react,…]`
+Проверка вида: `cargo run -p ui-agent --example preview_rig -- <pig|goose|penguin> out.png [cycle,react,…]`
 (кадры ходьбы/бега и жесты × четыре стороны на сером фоне, 2×).
 
 | Поле `agent.json` | Смысл |
@@ -347,6 +371,10 @@ companion.tick();                                // выходки и событ
 | `Rummage` | `rummage` | енот | крадётся к ведру-мусорке, роется в нём мордой, шесть бумажек разлетаются и плавно ложатся; всё тает |
 | `Stash` | `stash` | енот | с невинным видом стоит лицом к зрителю, за спиной торчит записка; щёлкнули по еноту — отдаёт её карточкой-шуткой, нет — через 12 с уносит; только на пустой экран |
 | `Lookout` | `lookout` | енот | встаёт столбиком на задние лапы, хвост на земле, озирается и опускается |
+| `Toboggan` | `toboggan` | пингвин | разбег вразвалку, плюх на живот и скольжение по экрану; за пузом остаётся полоса (гаснет за 6 с) |
+| `Wipeout` | `wipeout` | пингвин | на ходу поскальзывается, балансирует, размахивая ластами, шлёпается ничком и барахтается; встаёт оглушённым |
+| `Applause` | `applause` | пингвин | лицом к зрителю хлопает ластами с подскоком, в конце сердечки |
+| `Strut` | `strut` | пингвин | важно шествует через экран: грудь вперёд, ласты врозь, кивает на ходу |
 
 **Озорные** сценки (`Stunt::naughty()`) играются только при `AgentConfig::naughty` (по
 умолчанию выкл): на рабочем месте туалетный юмор неуместен. Демо их включает, `Companion` —
@@ -376,6 +404,9 @@ companion.tick();                                // выходки и событ
 `sim/stunt/goose/`, `sim/stunt/pig/`, `sim/stunt/elephant/` (имя файла = имя сценки). Файл
 каталога (`common.rs`, `goose.rs`, `pig.rs`, `elephant.rs`) перечисляет его сценки и хранит то,
 что у вида своё (шутки записки `NOTES`, у слоника ещё `trunk_down` и `face_sideways`). `sim/stunt/mod.rs` — общий для всех: реестр `acts!`, запуск, шаг, выбор случайной,
+`sim/stunt/goose/`, `sim/stunt/pig/`, `sim/stunt/penguin/` (имя файла = имя сценки). Файл
+каталога (`common.rs`, `goose.rs`, `pig.rs`, `penguin.rs`) перечисляет его сценки и хранит то,
+что у вида своё (шутки записки `NOTES`, у пингвина — `prone`: лечь ничком). `sim/stunt/mod.rs` — общий для всех: реестр `acts!`, запуск, шаг, выбор случайной,
 помощники (`spot_away`, `halt`, `perform_quietly`); `sim/stunt/reflex.rs` — рефлексы
 (испуг, отряхивание). Предметы — модели в `effects/`, сценарии — `sim/stunt_tests/`.
 
@@ -390,6 +421,8 @@ companion.tick();                                // выходки и событ
   виляние хвостом `wag`;
   голова, глаза (`Eyes::Crossed`/`Wide`), рот, язык, крылья гуся и уши слоника `wings`/`flap`,
   узел шеи `knot`;
+  голова, глаза (`Eyes::Crossed`/`Wide`), рот, язык, крылья гуся и ласты пингвина
+  `wings`/`flap`, узел шеи `knot`;
 - `Sim::drive` (`Drive`) — толчок тела мимо мозга: юз, скольжение, отдача, полёт; упор в край
   экрана — `Sim::bumped`; с `overhang` тело заходит за край, и окно персонажа обрезается по
   монитору (`Sim::character_clip`);
@@ -398,6 +431,8 @@ companion.tick();                                // выходки и событ
   бабочка, тапок); `Sim::flock` — гусята; `Sim::scribble` — линия клювом; `Sim::trail` — путь курсора.
   бабочка, бумажка); `Sim::flock` — гусята; `Sim::scribble` — линия клювом; `Sim::trail` — путь
   курсора; `Sim::clicked` — по персонажу щёлкнули на этом кадре (енот отдаёт записку).
+  бабочка); `Sim::flock` — гусята; `Sim::scribble` — линия клювом и полоса пингвина пузом
+  (`stamp_between`); `Sim::trail` — путь курсора.
 
 **Как добавить сценку** (всё в ядре, проверяется тестами без Windows):
 
@@ -424,6 +459,11 @@ companion.tick();                                // выходки и событ
    `every_stunt_finishes_while_wandering` гоняет все сценки в свободной прогулке, как на
    рабочем столе; превью тоже снимает в ней. Кадры глазами: `cargo run -p ui-agent --example preview_stunt
    -- <goose|pig|raccoon> <сценка> out.png [--ui 3 --crop 140,110 --secs 8 --every 0.4]`.
+5. Сценарий в `src/sim/stunt_tests/` (общие файлы подключены к свинке, гусю, пингвину и спрайту,
+   видовые — к своему телу). Сценарии в режиме `Stay` прячут ошибки остановки: общий тест
+   `every_stunt_finishes_while_wandering` гоняет все сценки в свободной прогулке, как на
+   рабочем столе; превью тоже снимает в ней. Кадры глазами: `cargo run -p ui-agent --example preview_stunt
+   -- <goose|pig|penguin> <сценка> out.png [--ui 3 --crop 140,110 --secs 8 --every 0.4]`.
 6. Строка в таблице выше; снаружи сценку зовут по имени (`Stunt::from_name`).
 
 ## Настройки `AgentConfig`
@@ -499,6 +539,7 @@ companion.tick();                                // выходки и событ
 cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|dachshund] [--grab]  # Windows
 cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|elephant] [--grab]  # Windows
 cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|raccoon] [--grab]  # Windows
+cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|penguin] [--grab]  # Windows
 cargo test -p ui-agent                                                          # любая машина
 cargo test -p ui-agent --target x86_64-pc-windows-gnu                           # на машине с Windows
 cargo test -p ui-agent --offline --target x86_64-pc-windows-gnu --no-run        # только сборка
@@ -543,6 +584,10 @@ cargo test -p ui-agent --offline --target x86_64-pc-windows-gnu --no-run        
 детерминизм; у свинки — рысь на четырёх ногах и голова, не отрывающаяся от тела; у енота —
 хвост на пружине и крадущаяся походка) и `render::{creature, goose, pig, raccoon}` тоже
 проверены без ОС.
+для каждого тела — со свинкой, с гусём, с пингвином и с маленьким спрайтовым набором из памяти; `rig` (лапы не скользят и ходят по очереди,
+число шагов от пути, а не от `dt`, покой, перетаскивание, конечность позы, охват холста,
+детерминизм; у свинки — рысь на четырёх ногах и голова, не отрывающаяся от тела; у пингвина —
+развалка и частый короткий шаг) и `render::{creature, goose, pig, penguin}` тоже проверены без ОС.
 Windows-тесты (`platform::*`, `agent::tests`: запуск → `Spawned` → остановка, `Drop`
 без `shutdown`, команды после остановки → `Stopped`) требуют рабочего стола Windows.
 
@@ -568,6 +613,7 @@ Windows-тесты (`platform::*`, `agent::tests`: запуск → `Spawned` �
 - [ ] `stunt peek`, `stuck`, `gift`, `edge_tumble`: персонаж обрезается по краю монитора и не
       виден на соседнем; `wall_slam`, `flight`: удар о край экрана; `all` — все сценки вида по очереди
       виден на соседнем; `wall_slam`, `flight`: удар о край экрана; `all` — все 57 сценок по очереди
+      виден на соседнем; `wall_slam`, `flight`: удар о край экрана; `all` — все сценки тела по очереди
   видны, следы бледнеют и исчезают.
 - [ ] После остановки не остаётся окон; число дескрипторов GDI и USER в Диспетчере задач
   (колонки «Объекты GDI», «Объекты USER») за 10 минут работы остаётся ровным (с карточками и без).

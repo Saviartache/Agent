@@ -138,6 +138,8 @@ fn rig_kind(name: &str) -> Result<RigKind, AgentError> {
             "неизвестное тело «{name}», есть: goose, pig, dachshund"
             "неизвестное тело «{name}», есть: goose, pig, elephant"
         ))
+        let known = RigKind::ALL.map(RigKind::name).join(", ");
+        fail(format!("неизвестное тело «{name}», есть: {known}"))
     })
 }
 

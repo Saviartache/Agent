@@ -1,5 +1,6 @@
 //! Сложение вида: чем гусь, свинка и слоник отличаются при общем скелете.
 //! Сложение вида: чем гусь, свинка и енот отличаются при общем скелете.
+//! Сложение вида: чем гусь, свинка и пингвин отличаются при общем скелете.
 
 use super::feet::Stance;
 use crate::math::Vec2;
@@ -52,6 +53,12 @@ pub struct Trunk {
     pub slack: f32,
     /// Крадётся: на ходу тело ниже стойки на столько.
     pub prowl: f32,
+    /// Доля обычного шага: длина, высота подъёма лапы и время.
+    pub stride: f32,
+    /// Ходит вразвалку: наклон вбок к опорной лапе, рад.
+    pub waddle: f32,
+    /// Бег и жесты оттопыривают крылья (`Antic::wings`); у гуся — только сценки.
+    pub gesture_wings: bool,
 }
 
 const GOOSE: Build = Build {
@@ -78,6 +85,9 @@ const GOOSE: Build = Build {
     dangle_down: 12.0,
     trunk: None,
     prowl: 0.0,
+    stride: 1.0,
+    waddle: 0.0,
+    gesture_wings: false,
 };
 
 /// Копилка на коротких ногах: голова почти с тело и сидит на нём без шеи.
@@ -197,6 +207,37 @@ const RACCOON: Build = Build {
     dangle_side: 4.5,
     dangle_down: 10.0,
     prowl: 3.5,
+    stride: 1.0,
+    waddle: 0.0,
+    gesture_wings: false,
+};
+
+/// Тело гуся, поставленное торчком: продольная ось — рост, «верх» тела — спина;
+/// шеи нет, шаг короткий, вразвалку.
+const PENGUIN: Build = Build {
+    body_radii: [12.0, 8.5, 8.0],
+    stand_z: 13.0,
+    body_pitch: 1.45,
+    neck_base: [9.0, 0.0],
+    neck_rest: [0.5, 5.0],
+    curl_rest: [6.0, 0.0, -6.0],
+    neck_slack: 0.3,
+    sidesteps: false,
+    head_turn: 1.0,
+    head_radius: 6.0,
+    head_pitch: 0.0,
+    muzzle: 4.5,
+    print: 2.4,
+    hind: Pair {
+        along: 2.0,
+        side: 3.6,
+    },
+    fore: None,
+    dangle_side: 4.0,
+    dangle_down: 13.0,
+    stride: 0.55,
+    waddle: 0.28,
+    gesture_wings: true,
 };
 
 impl RigKind {
@@ -212,6 +253,7 @@ impl RigKind {
             Self::Dachshund => &DACHSHUND,
             Self::Elephant => &ELEPHANT,
             Self::Raccoon => &RACCOON,
+            Self::Penguin => &PENGUIN,
         }
     }
 }

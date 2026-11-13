@@ -36,6 +36,8 @@ pub struct Stance {
     /// Разнос лап от оси тела, px.
     pub side: f32,
     pub grounded: bool,
+    /// Доля обычного шага: длина, высота и время.
+    pub stride: f32,
 }
 
 impl Stance {
@@ -49,6 +51,7 @@ impl Stance {
             scale,
             side,
             grounded,
+            stride: 1.0,
         }
     }
 }
@@ -166,7 +169,8 @@ impl Feet {
         } else {
             return;
         };
-        let secs = (STEP_SECS_STILL / (1.0 + speed(stance) / STEP_SPEED)).max(STEP_SECS_MIN);
+        let secs = (STEP_SECS_STILL / (1.0 + speed(stance) / STEP_SPEED)).max(STEP_SECS_MIN)
+            * stance.stride;
         let leg = &mut self.legs[step];
         leg.swing = Some(Swing {
             from: leg.at,
@@ -183,12 +187,12 @@ fn speed(stance: &Stance) -> f32 {
 
 fn stride(stance: &Stance) -> f32 {
     let walking = (speed(stance) / STRIDE_SPEED).min(1.0);
-    (STRIDE_STILL + (STRIDE_MOVE - STRIDE_STILL) * walking) * stance.scale
+    (STRIDE_STILL + (STRIDE_MOVE - STRIDE_STILL) * walking) * stance.scale * stance.stride
 }
 
 fn height(stance: &Stance) -> f32 {
     let fast = (speed(stance) / STEP_SPEED).min(1.0);
-    (STEP_HEIGHT + STEP_HEIGHT_FAST * fast) * stance.scale
+    (STEP_HEIGHT + STEP_HEIGHT_FAST * fast) * stance.scale * stance.stride
 }
 
 /// Место лапы пары, стоящей в `pos`: сбоку от оси и чуть впереди по ходу.

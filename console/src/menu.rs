@@ -47,6 +47,7 @@ pub fn rig_label(kind: RigKind) -> &'static str {
         RigKind::Dachshund => "такса",
         RigKind::Elephant => "слоник",
         RigKind::Raccoon => "енот",
+        RigKind::Penguin => "пингвин",
     }
 }
 

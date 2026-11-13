@@ -42,6 +42,7 @@ fn common_b_gift_kinds() -> &'static [PropKind] {
         Some(RigKind::Elephant) => &[PropKind::Apple],
         Some(RigKind::Raccoon) => &[PropKind::Coin],
         None => &[PropKind::Pebble],
+        Some(RigKind::Penguin) | None => &[PropKind::Pebble],
     }
 }
 

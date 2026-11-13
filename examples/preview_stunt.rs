@@ -2,6 +2,7 @@
 //! `cargo run -p ui-agent --example preview_stunt -- <goose|pig|dachshund> <сценка> <out.png> [ключи]`
 //! `cargo run -p ui-agent --example preview_stunt -- <goose|pig|elephant> <сценка> <out.png> [ключи]`
 //! `cargo run -p ui-agent --example preview_stunt -- <goose|pig|raccoon> <сценка> <out.png> [ключи]`
+//! `cargo run -p ui-agent --example preview_stunt -- <goose|pig|penguin> <сценка> <out.png> [ключи]`
 //! `--secs N` — сколько снимать (8), `--every N` — шаг кадров (0.4),
 //! `--cursor x,y` — где курсор от персонажа (180,-40), `--orbit` — курсор ходит кругом,
 //! `--ui N` — масштаб экрана (1.5), `--crop w,h` — кадр вокруг персонажа (400,280). Печатает события и итог сценки.
@@ -47,6 +48,7 @@ fn parse() -> Result<Options, Box<dyn Error>> {
         .ok_or("первый аргумент — тело: goose, pig или dachshund")?;
         .ok_or("первый аргумент — тело: goose, pig или elephant")?;
         .ok_or("первый аргумент — тело: goose, pig или raccoon")?;
+        .ok_or("первый аргумент — тело: goose, pig или penguin")?;
     let stunt = args
         .next()
         .and_then(|name| Stunt::from_name(&name))

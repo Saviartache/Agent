@@ -290,6 +290,11 @@ mod raccoon {
 
     fn character() -> Character {
         Character::builtin(RigKind::Raccoon).unwrap()
+mod penguin {
+    use super::*;
+
+    fn character() -> Character {
+        Character::builtin(RigKind::Penguin).unwrap()
     }
 
     include!("scenarios.rs");
@@ -298,6 +303,7 @@ mod raccoon {
     include!("stunt_tests/dachshund.rs");
     include!("stunt_tests/elephant_a.rs");
     include!("stunt_tests/raccoon.rs");
+    include!("stunt_tests/penguin.rs");
 }
 
 mod sprite {

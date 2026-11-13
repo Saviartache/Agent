@@ -2,6 +2,7 @@
 //! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`, `dachshund/`);
 //! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`, `elephant/`);
 //! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`, `raccoon/`);
+//! Общие лежат в `common/`, видовые — в каталоге своего тела (`goose/`, `pig/`, `penguin/`);
 //! чья сценка, решает `Stunt::cast`. Новая сценка — вариант `Stunt`, файл со своим
 //! состоянием и методами `begin_*`/`step_*` и строка в `acts!` здесь.
 //!
@@ -12,6 +13,7 @@ mod common;
 mod dachshund;
 mod elephant;
 mod goose;
+mod penguin;
 mod pig;
 mod raccoon;
 mod reflex;
@@ -144,6 +146,10 @@ acts! {
     Rummage: raccoon::rummage::Rummage => begin_rummage, step_rummage;
     Stash: raccoon::stash::Stash => begin_stash, step_stash;
     Lookout: raccoon::lookout::Lookout => begin_lookout, step_lookout;
+    Toboggan: penguin::toboggan::Toboggan => begin_toboggan, step_toboggan;
+    Wipeout: penguin::wipeout::Wipeout => begin_wipeout, step_wipeout;
+    Applause: penguin::applause::Applause => begin_applause, step_applause;
+    Strut: penguin::strut::Strut => begin_strut, step_strut;
 }
 
 /// Итог шага сценки.
@@ -311,6 +317,7 @@ impl Sim {
             Some(RigKind::Dachshund) => dachshund::NOTES,
             Some(RigKind::Elephant) => elephant::NOTES,
             Some(RigKind::Raccoon) => raccoon::NOTES,
+            Some(RigKind::Penguin) => penguin::NOTES,
             None => common::NOTES,
         }
     }

@@ -14,8 +14,13 @@ use super::{Canvas, Color, elephant, goose, pig, pixel};
 use super::scene::PixelRect;
 use super::shadow::{self, Oval};
 use super::{Canvas, Color, goose, pig, pixel, raccoon};
+//! проекция и мозаика; сам вид рисуют `goose`, `pig` и `penguin`.
+
+use super::scene::PixelRect;
+use super::shadow::{self, Oval};
+use super::{Canvas, Color, goose, penguin, pig, pixel};
 use crate::math::Vec2;
-use crate::rig::{Pose, RigKind, Vec3, flatten};
+use crate::rig::{Frame, Pose, RigKind, Vec3, flatten};
 
 pub(super) const WHITE: Color = Color(0xFF_FF_FF);
 /// Нужна только затем, чтобы белое не пропадало на белом окне.
@@ -61,6 +66,7 @@ pub fn paint(canvas: &mut Canvas, origin: Vec2, pose: &Pose) {
         RigKind::Dachshund => dachshund::draw(canvas, &pen),
         RigKind::Elephant => elephant::draw(canvas, &pen),
         RigKind::Raccoon => raccoon::draw(canvas, &pen),
+        RigKind::Penguin => penguin::draw(canvas, &pen),
     }
 }
 
@@ -127,13 +133,17 @@ impl Pen<'_> {
 
     pub fn body(&self) -> Oval {
         let body = &self.pose.body;
-        let frame = body.frame();
+        self.ellipsoid(body.center, &body.frame(), body.radii)
+    }
+
+    /// Силуэт эллипсоида с полуосями `radii` вдоль осей `frame`.
+    pub fn ellipsoid(&self, center: Vec3, frame: &Frame, radii: [f32; 3]) -> Oval {
         let axes = [
-            frame.forward * body.radii[0],
-            frame.right * body.radii[1],
-            frame.up * body.radii[2],
+            frame.forward * radii[0],
+            frame.right * radii[1],
+            frame.up * radii[2],
         ];
-        silhouette(self.at(body.center), axes)
+        silhouette(self.at(center), axes)
     }
 
     /// Пятно под телом; в прыжке и в руках оно меньше и бледнее.

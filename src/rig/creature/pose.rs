@@ -21,6 +21,8 @@ pub struct Body {
     pub pitch: f32,
     /// Поворот вокруг оси хода: π/2 — на боку, π — на спине.
     pub roll: f32,
+    /// Наклон вбок вразвалку, рад: плюс — макушкой вправо (`Frame::rocked`).
+    pub rock: f32,
     /// Полуоси: вперёд, вбок, вверх.
     pub radii: [f32; 3],
 }
@@ -28,7 +30,8 @@ pub struct Body {
 impl Body {
     /// Оси тела в мире: вперёд, вправо и «вверх по спине».
     pub fn frame(&self) -> Frame {
-        Frame::new(self.forward.y.atan2(self.forward.x), self.pitch, self.roll)
+        let yaw = self.forward.y.atan2(self.forward.x);
+        Frame::new(yaw, self.pitch, self.roll).rocked(yaw, self.rock)
     }
 
     /// Полуширина следа на земле: поперёк хода.

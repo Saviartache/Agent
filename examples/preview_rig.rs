@@ -2,6 +2,7 @@
 //! `cargo run -p ui-agent --example preview_rig -- <goose|pig|dachshund> <out.png> [cycle,<жест>,…]`
 //! `cargo run -p ui-agent --example preview_rig -- <goose|pig|elephant> <out.png> [cycle,<жест>,…]`
 //! `cargo run -p ui-agent --example preview_rig -- <goose|pig|raccoon> <out.png> [cycle,<жест>,…]`
+//! `cargo run -p ui-agent --example preview_rig -- <goose|pig|penguin> <out.png> [cycle,<жест>,…]`
 //! `cycle` — кадры ходьбы и бега; `mud` — тело в грязи после лужи;
 //! жест — имя встроенного действия (`react`, `sleep`, …);
 //! `antic:поле=число;eyes=crossed;tongue=1;mud=1` — накладка сценки и вид тела по всем сторонам.
@@ -285,6 +286,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .ok_or("первый аргумент — тело: goose, pig или dachshund")?;
         .ok_or("первый аргумент — тело: goose, pig или elephant")?;
         .ok_or("первый аргумент — тело: goose, pig или raccoon")?;
+        .ok_or("первый аргумент — тело: goose, pig или penguin")?;
     let path: PathBuf = args.next().ok_or("второй аргумент — путь к PNG")?.into();
     let cells = build(kind, args.next().as_deref())?;
     let (rgb, width, height) = render(&cells)?;

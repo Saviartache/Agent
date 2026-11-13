@@ -588,7 +588,16 @@ fn squash_and_bloat_change_the_body() {
         let flat = with_antic(kind, squashed(1.6, 0.25), Look::default());
         let tall = with_antic(kind, squashed(0.9, 1.2), Look::default());
         let fat = with_antic(kind, Antic::default(), bloated());
-        let radii = |rig: &Rig| rig.goose.pose().body.radii;
+        // Полуоси вдоль, вбок и по росту: у тела торчком рост — продольная ось
+        let upright = |body: &Body| {
+            let [along, side, up] = body.radii;
+            if body.pitch > PI / 4.0 {
+                [up, side, along]
+            } else {
+                [along, side, up]
+            }
+        };
+        let radii = |rig: &Rig| upright(&rig.goose.pose().body);
         let base = radii(&plain);
         assert!(radii(&flat)[1] > base[1] * 1.5 && radii(&flat)[2] < base[2] * 0.3);
         assert!(radii(&tall)[2] > base[2] * 1.1 && radii(&tall)[0] < base[0]);
@@ -596,8 +605,9 @@ fn squash_and_bloat_change_the_body() {
         // Низ тела не проваливается под землю и не отрывается от неё
         for rig in [&flat, &tall, &fat] {
             let body = rig.goose.pose().body;
-            assert!(body.center.z - body.radii[2] > -0.5 * SCALE, "{kind:?}");
-            assert!(body.center.z - body.radii[2] < 4.0 * SCALE, "{kind:?}");
+            let bottom = body.center.z - upright(&body)[2];
+            assert!(bottom > -0.5 * SCALE, "{kind:?}");
+            assert!(bottom < 4.0 * SCALE, "{kind:?}");
         }
     }
 }
@@ -748,4 +758,27 @@ fn elephant_trunk_tip_swings_behind_when_starting_off() {
         lag(moving),
         lag(rest)
     );
+fn penguin_waddles_with_short_steps_and_the_goose_does_not() {
+    let walk = |kind| {
+        let mut rig = Rig::of(kind, 7);
+        rig.go(WALK, RIGHT);
+        rig.run(1.0, DT);
+        let mut rocks = Vec::new();
+        let falls = (0..120)
+            .map(|_| {
+                rig.tick(DT);
+                rocks.push(rig.goose.pose().body.rock);
+                rig.steps.drain(..).count()
+            })
+            .sum::<usize>();
+        let (low, high) = rocks
+            .iter()
+            .fold((0.0f32, 0.0f32), |(l, h), r| (l.min(*r), h.max(*r)));
+        (falls, low, high)
+    };
+    let (penguin, low, high) = walk(RigKind::Penguin);
+    assert!(low < -0.15 && high > 0.15, "{low} {high}");
+    let (goose, low, high) = walk(RigKind::Goose);
+    assert_eq!((low, high), (0.0, 0.0));
+    assert!(penguin > goose * 3 / 2, "{penguin} {goose}");
 }

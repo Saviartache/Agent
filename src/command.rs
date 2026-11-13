@@ -109,6 +109,7 @@ const PIG: Option<RigKind> = Some(RigKind::Pig);
 const DACHSHUND: Option<RigKind> = Some(RigKind::Dachshund);
 const ELEPHANT: Option<RigKind> = Some(RigKind::Elephant);
 const RACCOON: Option<RigKind> = Some(RigKind::Raccoon);
+const PENGUIN: Option<RigKind> = Some(RigKind::Penguin);
 
 /// Таблица сценок: вариант, имя, чья, озорная.
 macro_rules! stunts {
@@ -117,6 +118,7 @@ macro_rules! stunts {
         /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,dachshund}/`.
         /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,elephant}/`.
         /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,raccoon}/`.
+        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,penguin}/`.
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub enum Stunt {
             $($(#[$doc])* $variant,)*
@@ -281,6 +283,14 @@ stunts! {
     Stash = "stash", RACCOON;
     /// Енот: встаёт на задние лапы и озирается.
     Lookout = "lookout", RACCOON;
+    /// Пингвин: разбег и пузом по экрану, за ним полоса.
+    Toboggan = "toboggan", PENGUIN;
+    /// Пингвин: поскальзывается, машет ластами и падает ничком.
+    Wipeout = "wipeout", PENGUIN;
+    /// Пингвин: хлопает ластами зрителю.
+    Applause = "applause", PENGUIN;
+    /// Пингвин: важно шествует через экран, кивая.
+    Strut = "strut", PENGUIN;
 }
 
 impl Stunt {

@@ -65,12 +65,34 @@ impl Creature {
         self.kind.build()
     }
 
+    /// Наклон стойки: завалившись на бок или спину, тело ложится вдоль земли.
+    fn stand_pitch(&self) -> f32 {
+        self.build().body_pitch * self.mods.roll.cos().max(0.0)
+    }
+
     fn body_pitch(&self) -> f32 {
-        self.build().body_pitch + self.mods.pitch
+        self.stand_pitch() + self.mods.pitch
     }
 
     fn body_frame(&self) -> Frame {
-        Frame::new(self.yaw, self.body_pitch(), self.mods.roll)
+        Frame::new(self.yaw, self.body_pitch(), self.mods.roll).rocked(self.yaw, self.rock())
+    }
+
+    /// Оси, вдоль которых висят лапы: у тела торчком — отвесно вниз, а не к спине.
+    fn legs_frame(&self) -> Frame {
+        let pitch = self.body_pitch() - self.stand_pitch() * self.upright();
+        Frame::new(self.yaw, pitch, self.mods.roll).rocked(self.yaw, self.rock())
+    }
+
+    /// Какая лапа поднята, −1…1: плюс — левая.
+    fn stride(&self) -> f32 {
+        let lift = (self.feet.lift(0) - self.feet.lift(1)) / (HEAD_BOB_LIFT * self.scale);
+        lift.clamp(-1.0, 1.0)
+    }
+
+    /// Вразвалку: тело клонится к опорной лапе.
+    fn rock(&self) -> f32 {
+        self.build().waddle * self.stride()
     }
 
     fn right(&self) -> Vec2 {
@@ -82,8 +104,22 @@ impl Creature {
     fn ratio(&self) -> [f32; 3] {
         let m = &self.mods;
         let grow = 1.0 + BLOAT_GROW * self.look.bloat;
-        let along = (1.0 + m.stretch_x).max(MIN_RATIO) * grow;
-        [along, along, (1.0 + m.stretch_y).max(MIN_RATIO) * grow]
+        let wide = (1.0 + m.stretch_x).max(MIN_RATIO) * grow;
+        let tall = (1.0 + m.stretch_y).max(MIN_RATIO) * grow;
+        // Рост меняется вдоль той оси, что стоит торчком
+        let upright = self.upright();
+        let lerp = |a: f32, b: f32| a + (b - a) * upright;
+        [lerp(wide, tall), wide, lerp(tall, wide)]
+    }
+
+    /// Насколько продольная ось тела стоит торчком, 0…1: до 30° — лежит, от 60° — стоит.
+    fn upright(&self) -> f32 {
+        ((self.stand_pitch().sin().powi(2) - 0.25) * 2.0).clamp(0.0, 1.0)
+    }
+
+    /// Полуось по росту.
+    fn tall(&self, radii: [f32; 3]) -> f32 {
+        radii[2] + (radii[0] - radii[2]) * self.upright()
     }
 
     fn radii(&self) -> [f32; 3] {
@@ -120,9 +156,11 @@ impl Creature {
             DRAG_LIFT * self.scale
         };
         let build = self.build();
-        let [_, side, high] = self.radii();
+        let radii = self.radii();
+        let (side, high) = (radii[1], self.tall(radii));
         // Низ тела на месте при любом сжатии; брюхо раздутого провисает
-        let stand = build.stand_z - build.body_radii[2] + high - BLOAT_SAG * self.look.bloat;
+        let stand =
+            build.stand_z - self.tall(build.body_radii) + high - BLOAT_SAG * self.look.bloat;
         let (sin, cos) = m.roll.sin_cos();
         // Завалившись, тело ложится на землю своей шириной
         let rest = (side * sin).hypot(high * cos);
@@ -145,10 +183,8 @@ impl Creature {
         let (frame, center) = (self.body_frame(), self.body_center());
         let (forward, right) = (self.heading(), self.right());
         // Голова клюёт вперёд в такт шагу: лапы по очереди
-        let stride = (self.feet.lift(0) - self.feet.lift(1)) / (HEAD_BOB_LIFT * s);
         let slack = build.neck_slack;
-        let reach =
-            build.neck_rest[0] + (m.neck_forward + HEAD_BOB * stride.clamp(-1.0, 1.0)) * slack;
+        let reach = build.neck_rest[0] + (m.neck_forward + HEAD_BOB * self.stride()) * slack;
         let (reach, up) = keep_length(reach, build.neck_rest[1] + m.neck_up * slack, build);
         let aside = m.neck_side * slack;
         let upright = Vec3::new(
@@ -235,12 +271,21 @@ impl Creature {
         let base = self.neck_base(&frame, center);
         let head_center = self.head.center(base);
         let lift = m.hop.max(0.0) + if self.grounded { 0.0 } else { DRAG_LIFT };
+        let legs = self.legs_frame();
         let pair =
             |feet: &Feet, along| [0, 1].map(|leg| self.foot(feet, along, &frame, center, leg));
         let trunk = self
             .trunk()
             .zip(self.trunk.as_ref())
             .map(|((root, _), tip)| [root, root + tip.rel()]);
+            |feet: &Feet, along| [0, 1].map(|leg| self.foot(feet, along, &legs, center, leg));
+        // На спине голова запрокинута
+        let thrown_back = LYING_HEAD_PITCH * (-m.roll.cos()).max(0.0);
+        let rock = self.rock();
+        let mut antic = self.antic;
+        if build.gesture_wings {
+            antic.wings = antic.wings.max(m.wings);
+        }
         let mut pose = Pose {
             kind: self.kind,
             pos: self.pos,
@@ -250,6 +295,7 @@ impl Creature {
                 forward: self.heading(),
                 pitch: self.body_pitch(),
                 roll: m.roll,
+                rock,
                 radii: self.radii().map(|r| r * s),
             },
             neck: neck(base, head_center, self.heading(), 1.0 - self.rolled()),
@@ -258,6 +304,9 @@ impl Creature {
                 dir: Vec2::from_angle(self.head.yaw()),
                 pitch: self.head_pitch(),
                 roll: m.head_roll + m.roll,
+                pitch: build.head_pitch + m.head_pitch + thrown_back,
+                // Крен головы плюсом клонит макушку влево, развалка — вправо
+                roll: m.head_roll + m.roll - rock,
                 radius: build.head_radius * s,
                 muzzle: build.muzzle * s,
                 eyes_open: (1.0 - m.lids).clamp(0.0, 1.0) * self.head.eyes_open(),
@@ -274,6 +323,7 @@ impl Creature {
             tuck: m.tuck.clamp(0.0, 1.0),
             wag: m.wag.clamp(0.0, 1.0) * cycle(self.clock, WAG_HZ),
             antic: self.antic,
+            antic,
             look: self.look,
         };
         if self.size != 1.0 {
@@ -299,7 +349,7 @@ impl Creature {
             .as_ref()
             .map_or(hind, |fore| (fore.along + hind) * 0.5);
         // Лапы торчат из-под низа тела, как бы оно ни лежало
-        let down = (build.dangle_down * s).max(self.radii()[2] * s + LEG_PROTRUDE * s);
+        let down = (build.dangle_down * s).max(self.tall(self.radii()) * s + LEG_PROTRUDE * s);
         let hang = frame.point(
             center,
             (along - middle + swing) * ratio[0] * s,

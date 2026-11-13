@@ -6,6 +6,7 @@ mod dachshund;
 mod elephant;
 mod goose;
 mod marks;
+mod penguin;
 mod pig;
 pub mod pixel;
 mod props;
