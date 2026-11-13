@@ -1,8 +1,5 @@
 //! Демонстрация: персонаж на рабочем столе Windows, управляемый из консоли.
-//! `cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|dachshund] [--grab]`
-//! `cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|elephant] [--grab]`
-//! `cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|raccoon] [--grab]`
-//! `cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|penguin] [--grab]`
+//! `cargo run -p ui-agent --example desktop_agent -- [--pack <папка>] [--rig goose|pig|dachshund|elephant|raccoon|penguin] [--grab]`
 //! Команды консоли — `help`; ещё есть меню по правой кнопке.
 
 #[cfg(not(windows))]
@@ -128,12 +125,9 @@ mod demo {
             match arg.as_str() {
                 "--pack" => options.pack = Some(args.next().ok_or("--pack требует папку")?.into()),
                 "--rig" => {
-                    let name = args
-                        .next()
-                        .ok_or("--rig требует имя: goose, pig или dachshund")?;
-                        .ok_or("--rig требует имя: goose, pig или elephant")?;
-                        .ok_or("--rig требует имя: goose, pig или raccoon")?;
-                        .ok_or("--rig требует имя: goose, pig или penguin")?;
+                    let name = args.next().ok_or(
+                        "--rig требует имя: goose, pig, dachshund, elephant, raccoon или penguin",
+                    )?;
                     options.rig =
                         RigKind::from_name(&name).ok_or(format!("нет такого тела: {name}"))?;
                 }

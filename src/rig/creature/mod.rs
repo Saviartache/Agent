@@ -1,7 +1,6 @@
 //! Тело, которое рисуется из примитивов и живёт само — лапы шагают и встают
 //! на землю, шея и голова идут с запозданием, глаза моргают. Скелет общий,
-//! вид (гусь, свинка, слоник) задаёт сложение.
-//! вид (гусь, свинка, пингвин) задаёт сложение.
+//! вид задаёт сложение.
 
 mod antic;
 mod assemble;
@@ -246,6 +245,7 @@ impl Creature {
         let rest = self.trunk().map(|(_, rest)| rest);
         if let (Some(trunk), Some(rest), Some(shape)) = (&mut self.trunk, rest, &build.trunk) {
             trunk.update(dt, rest, accel, self.scale, shape.slack);
+        }
         if dt > 0.0 {
             let right = Vec2::from_angle(self.yaw + std::f32::consts::FRAC_PI_2);
             self.tail.update(dt, accel, turned / dt, right, self.scale);

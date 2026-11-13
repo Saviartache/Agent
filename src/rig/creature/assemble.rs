@@ -273,14 +273,11 @@ impl Creature {
         let lift = m.hop.max(0.0) + if self.grounded { 0.0 } else { DRAG_LIFT };
         let legs = self.legs_frame();
         let pair =
-            |feet: &Feet, along| [0, 1].map(|leg| self.foot(feet, along, &frame, center, leg));
+            |feet: &Feet, along| [0, 1].map(|leg| self.foot(feet, along, &legs, center, leg));
         let trunk = self
             .trunk()
             .zip(self.trunk.as_ref())
             .map(|((root, _), tip)| [root, root + tip.rel()]);
-            |feet: &Feet, along| [0, 1].map(|leg| self.foot(feet, along, &legs, center, leg));
-        // На спине голова запрокинута
-        let thrown_back = LYING_HEAD_PITCH * (-m.roll.cos()).max(0.0);
         let rock = self.rock();
         let mut antic = self.antic;
         if build.gesture_wings {
@@ -303,8 +300,6 @@ impl Creature {
                 center: head_center,
                 dir: Vec2::from_angle(self.head.yaw()),
                 pitch: self.head_pitch(),
-                roll: m.head_roll + m.roll,
-                pitch: build.head_pitch + m.head_pitch + thrown_back,
                 // Крен головы плюсом клонит макушку влево, развалка — вправо
                 roll: m.head_roll + m.roll - rock,
                 radius: build.head_radius * s,
@@ -322,7 +317,6 @@ impl Creature {
             shadow: 1.0 / (1.0 + lift / SHADOW_HALF),
             tuck: m.tuck.clamp(0.0, 1.0),
             wag: m.wag.clamp(0.0, 1.0) * cycle(self.clock, WAG_HZ),
-            antic: self.antic,
             antic,
             look: self.look,
         };

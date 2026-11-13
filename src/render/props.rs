@@ -403,7 +403,7 @@ mod tests {
     use crate::render::scene::{Effects, draw_effects, effects_rect, enclosing};
     use crate::rng::Rng;
 
-    const KINDS: [PropKind; 14] = [
+    const KINDS: [PropKind; 15] = [
         PropKind::Ball,
         PropKind::Apple,
         PropKind::Acorn,

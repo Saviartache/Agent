@@ -19,25 +19,20 @@ pub enum RigKind {
     Goose,
     Pig,
     Dachshund,
-}
-
-impl RigKind {
-    pub const ALL: [Self; 3] = [Self::Goose, Self::Pig, Self::Dachshund];
     Elephant,
-}
-
-impl RigKind {
-    pub const ALL: [Self; 3] = [Self::Goose, Self::Pig, Self::Elephant];
     Raccoon,
-}
-
-impl RigKind {
-    pub const ALL: [Self; 3] = [Self::Goose, Self::Pig, Self::Raccoon];
     Penguin,
 }
 
 impl RigKind {
-    pub const ALL: [Self; 3] = [Self::Goose, Self::Pig, Self::Penguin];
+    pub const ALL: [Self; 6] = [
+        Self::Goose,
+        Self::Pig,
+        Self::Dachshund,
+        Self::Elephant,
+        Self::Raccoon,
+        Self::Penguin,
+    ];
 
     pub fn from_name(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|kind| kind.name() == name)

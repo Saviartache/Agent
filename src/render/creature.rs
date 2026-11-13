@@ -1,24 +1,9 @@
 //! Отрисовка процедурного тела из позы: общее для всех видов — холст, тень,
-//! проекция и мозаика; сам вид рисуют `goose`, `pig` и `dachshund`.
+//! проекция и мозаика; сам вид рисуют `goose`, `pig`, `dachshund`, `elephant`, `raccoon` и `penguin`.
 
 use super::scene::PixelRect;
 use super::shadow::{self, Oval};
-use super::{Canvas, Color, dachshund, goose, pig, pixel};
-//! проекция и мозаика; сам вид рисуют `goose`, `pig` и `elephant`.
-
-use super::scene::PixelRect;
-use super::shadow::{self, Oval};
-use super::{Canvas, Color, elephant, goose, pig, pixel};
-//! проекция и мозаика; сам вид рисуют `goose`, `pig` и `raccoon`.
-
-use super::scene::PixelRect;
-use super::shadow::{self, Oval};
-use super::{Canvas, Color, goose, pig, pixel, raccoon};
-//! проекция и мозаика; сам вид рисуют `goose`, `pig` и `penguin`.
-
-use super::scene::PixelRect;
-use super::shadow::{self, Oval};
-use super::{Canvas, Color, goose, penguin, pig, pixel};
+use super::{Canvas, Color, dachshund, elephant, goose, penguin, pig, pixel, raccoon};
 use crate::math::Vec2;
 use crate::rig::{Frame, Pose, RigKind, Vec3, flatten};
 

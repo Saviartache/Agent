@@ -28,7 +28,7 @@ const MOMENTS: [f32; 3] = [0.1, 0.4, 0.8];
 /// Высота предмета «в воздухе», логические px.
 const AIR: f32 = 16.0;
 
-const KINDS: [PropKind; 14] = [
+const KINDS: [PropKind; 15] = [
     PropKind::Ball,
     PropKind::Apple,
     PropKind::Acorn,

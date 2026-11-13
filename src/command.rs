@@ -115,10 +115,7 @@ const PENGUIN: Option<RigKind> = Some(RigKind::Penguin);
 macro_rules! stunts {
     ($($(#[$doc:meta])* $variant:ident = $name:literal, $cast:ident $(, $naughty:ident)?;)*) => {
         /// Сценка, которую персонаж разыгрывает сам. Общие доступны всем, видовые — только
-        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,dachshund}/`.
-        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,elephant}/`.
-        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,raccoon}/`.
-        /// своему телу (`cast`); код сценок — `sim/stunt/{common,goose,pig,penguin}/`.
+        /// своему телу (`cast`); код сценок — `sim/stunt/{common,<вид>}/`.
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub enum Stunt {
             $($(#[$doc])* $variant,)*

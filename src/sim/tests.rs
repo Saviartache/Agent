@@ -279,17 +279,41 @@ mod dachshund {
 
     fn character() -> Character {
         Character::builtin(RigKind::Dachshund).unwrap()
+    }
+
+    include!("scenarios.rs");
+    include!("stunt_tests/common_a.rs");
+    include!("stunt_tests/common_b.rs");
+    include!("stunt_tests/dachshund.rs");
+}
+
 mod elephant {
     use super::*;
     use crate::rig::Vec3;
 
     fn character() -> Character {
         Character::builtin(RigKind::Elephant).unwrap()
+    }
+
+    include!("scenarios.rs");
+    include!("stunt_tests/common_a.rs");
+    include!("stunt_tests/common_b.rs");
+    include!("stunt_tests/elephant_a.rs");
+}
+
 mod raccoon {
     use super::*;
 
     fn character() -> Character {
         Character::builtin(RigKind::Raccoon).unwrap()
+    }
+
+    include!("scenarios.rs");
+    include!("stunt_tests/common_a.rs");
+    include!("stunt_tests/common_b.rs");
+    include!("stunt_tests/raccoon.rs");
+}
+
 mod penguin {
     use super::*;
 
@@ -300,9 +324,6 @@ mod penguin {
     include!("scenarios.rs");
     include!("stunt_tests/common_a.rs");
     include!("stunt_tests/common_b.rs");
-    include!("stunt_tests/dachshund.rs");
-    include!("stunt_tests/elephant_a.rs");
-    include!("stunt_tests/raccoon.rs");
     include!("stunt_tests/penguin.rs");
 }
 

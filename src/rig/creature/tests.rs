@@ -758,6 +758,9 @@ fn elephant_trunk_tip_swings_behind_when_starting_off() {
         lag(moving),
         lag(rest)
     );
+}
+
+#[test]
 fn penguin_waddles_with_short_steps_and_the_goose_does_not() {
     let walk = |kind| {
         let mut rig = Rig::of(kind, 7);

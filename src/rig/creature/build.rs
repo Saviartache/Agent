@@ -1,6 +1,4 @@
-//! Сложение вида: чем гусь, свинка и слоник отличаются при общем скелете.
-//! Сложение вида: чем гусь, свинка и енот отличаются при общем скелете.
-//! Сложение вида: чем гусь, свинка и пингвин отличаются при общем скелете.
+//! Сложение вида: чем виды отличаются при общем скелете.
 
 use super::feet::Stance;
 use crate::math::Vec2;
@@ -40,6 +38,14 @@ pub struct Build {
     pub dangle_down: f32,
     /// Хобот слона: вместо клюва и рыла.
     pub trunk: Option<Trunk>,
+    /// Крадётся: на ходу тело ниже стойки на столько.
+    pub prowl: f32,
+    /// Доля обычного шага: длина, высота подъёма лапы и время.
+    pub stride: f32,
+    /// Ходит вразвалку: наклон вбок к опорной лапе, рад.
+    pub waddle: f32,
+    /// Бег и жесты оттопыривают крылья (`Antic::wings`); у гуся — только сценки.
+    pub gesture_wings: bool,
 }
 
 /// Хобот: гибкий, кончик на пружине.
@@ -51,14 +57,6 @@ pub struct Trunk {
     pub gain: f32,
     /// Доля гусиного отставания кончика.
     pub slack: f32,
-    /// Крадётся: на ходу тело ниже стойки на столько.
-    pub prowl: f32,
-    /// Доля обычного шага: длина, высота подъёма лапы и время.
-    pub stride: f32,
-    /// Ходит вразвалку: наклон вбок к опорной лапе, рад.
-    pub waddle: f32,
-    /// Бег и жесты оттопыривают крылья (`Antic::wings`); у гуся — только сценки.
-    pub gesture_wings: bool,
 }
 
 const GOOSE: Build = Build {
@@ -117,6 +115,10 @@ const PIG: Build = Build {
     dangle_side: 5.0,
     dangle_down: 11.0,
     trunk: None,
+    prowl: 0.0,
+    stride: 1.0,
+    waddle: 0.0,
+    gesture_wings: false,
 };
 
 /// Пухлый слонёнок на ногах-тумбах: голова на теле без шеи, хобот висит.
@@ -150,6 +152,10 @@ const ELEPHANT: Build = Build {
         gain: 2.2,
         slack: 0.6,
     }),
+    prowl: 0.0,
+    stride: 1.0,
+    waddle: 0.0,
+    gesture_wings: false,
 };
 
 /// Такса: длинное низкое тело на очень коротких ногах, заметная шея, вытянутая морда.
@@ -177,7 +183,11 @@ const DACHSHUND: Build = Build {
     }),
     dangle_side: 3.8,
     dangle_down: 8.5,
+    trunk: None,
     prowl: 0.0,
+    stride: 1.0,
+    waddle: 0.0,
+    gesture_wings: false,
 };
 
 /// Длинное низкое тело с горбатой спиной, острая морда на короткой шее; крадётся.
@@ -206,6 +216,7 @@ const RACCOON: Build = Build {
     }),
     dangle_side: 4.5,
     dangle_down: 10.0,
+    trunk: None,
     prowl: 3.5,
     stride: 1.0,
     waddle: 0.0,
@@ -235,6 +246,8 @@ const PENGUIN: Build = Build {
     fore: None,
     dangle_side: 4.0,
     dangle_down: 13.0,
+    trunk: None,
+    prowl: 0.0,
     stride: 0.55,
     waddle: 0.28,
     gesture_wings: true,
