@@ -1,6 +1,6 @@
 //! Сборка позы: из состояния ног, головы и поправок жеста — точки тела в мире.
 
-use std::f32::consts::TAU;
+use std::f32::consts::{FRAC_PI_2, TAU};
 
 use super::Creature;
 use super::build::Build;
@@ -49,6 +49,12 @@ const LYING_REACH: f32 = 4.0;
 const LYING_HEAD_PITCH: f32 = 0.6;
 /// Тело не сплющить в ноль и не вывернуть наизнанку.
 const MIN_RATIO: f32 = 0.1;
+/// Корень хобота на морде: вперёд и вверх в радиусах головы.
+const TRUNK_ROOT: [f32; 2] = [0.8, -0.3];
+/// Поднятый хобот загибается назад не дальше этого наклона, рад.
+const TRUNK_RAISE: f32 = 2.2;
+/// Кончик хобота не ниже этого над землёй, design px: опущенный ложится вперёд.
+const TRUNK_FLOOR: f32 = 1.5;
 
 fn cycle(clock: f32, hz: f32) -> f32 {
     (TAU * hz * clock).sin()
@@ -169,6 +175,37 @@ impl Creature {
         (self.lying() * 4.0).clamp(0.0, 1.0)
     }
 
+    /// На спине голова запрокинута.
+    fn head_pitch(&self) -> f32 {
+        let m = &self.mods;
+        self.build().head_pitch + m.head_pitch + LYING_HEAD_PITCH * (-m.roll.cos()).max(0.0)
+    }
+
+    /// Корень хобота и куда от него тянется кончик; голова кивает — хобот
+    /// поднимается или опускается сильнее неё.
+    pub(super) fn trunk(&self) -> Option<(Vec3, Vec3)> {
+        let trunk = self.build().trunk.as_ref()?;
+        let (s, m) = (self.scale, &self.mods);
+        let center = self
+            .head
+            .center(self.neck_base(&self.body_frame(), self.body_center()));
+        let (yaw, pitch) = (self.head.yaw(), self.head_pitch());
+        let head = Frame::new(yaw, pitch, m.head_roll + m.roll);
+        let radius = self.build().head_radius * s;
+        let root = head.point(center, TRUNK_ROOT[0] * radius, 0.0, TRUNK_ROOT[1] * radius);
+        let bend = (trunk.droop + trunk.gain * pitch).clamp(-FRAC_PI_2, TRUNK_RAISE);
+        let length = trunk.length * s;
+        let reach = Frame::new(yaw, bend, 0.0).forward * length;
+        let drop = root.z - TRUNK_FLOOR * s;
+        if root.z + reach.z >= TRUNK_FLOOR * s {
+            return Some((root, reach));
+        }
+        // Не достаёт до земли сквозь неё: ложится вперёд
+        let flat = (length * length - drop.max(0.0).powi(2)).max(0.0).sqrt();
+        let ahead = Vec2::from_angle(yaw) * flat;
+        Some((root, Vec3::new(ahead.x, ahead.y, -drop)))
+    }
+
     pub(super) fn aim(
         &self,
         accel: Vec2,
@@ -200,8 +237,10 @@ impl Creature {
         let lift = m.hop.max(0.0) + if self.grounded { 0.0 } else { DRAG_LIFT };
         let pair =
             |feet: &Feet, along| [0, 1].map(|leg| self.foot(feet, along, &frame, center, leg));
-        // На спине голова запрокинута
-        let thrown_back = LYING_HEAD_PITCH * (-m.roll.cos()).max(0.0);
+        let trunk = self
+            .trunk()
+            .zip(self.trunk.as_ref())
+            .map(|((root, _), tip)| [root, root + tip.rel()]);
         let mut pose = Pose {
             kind: self.kind,
             pos: self.pos,
@@ -217,7 +256,7 @@ impl Creature {
             head: Head {
                 center: head_center,
                 dir: Vec2::from_angle(self.head.yaw()),
-                pitch: build.head_pitch + m.head_pitch + thrown_back,
+                pitch: self.head_pitch(),
                 roll: m.head_roll + m.roll,
                 radius: build.head_radius * s,
                 muzzle: build.muzzle * s,
@@ -229,6 +268,7 @@ impl Creature {
                 .as_ref()
                 .zip(build.fore.as_ref())
                 .map(|(feet, fore)| pair(feet, fore.along)),
+            trunk,
             shadow: 1.0 / (1.0 + lift / SHADOW_HALF),
             tuck: m.tuck.clamp(0.0, 1.0),
             wag: m.wag.clamp(0.0, 1.0) * cycle(self.clock, WAG_HZ),

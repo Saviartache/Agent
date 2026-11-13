@@ -1,6 +1,6 @@
 //! Тело, которое рисуется из примитивов и живёт само — лапы шагают и встают
 //! на землю, шея и голова идут с запозданием, глаза моргают. Скелет общий,
-//! вид (гусь, свинка) задаёт сложение.
+//! вид (гусь, свинка, слоник) задаёт сложение.
 
 mod antic;
 mod assemble;
@@ -16,7 +16,7 @@ pub use self::antic::{Antic, Eyes, Look};
 use self::build::Pair;
 use self::feet::{Feet, Stance};
 use self::gesture::{CLOCK_WRAP, Mods};
-use self::head::{HeadState, wrap_angle, yaw_of};
+use self::head::{HeadState, Spring, wrap_angle, yaw_of};
 pub use self::pose::{Body, GROUND_SQUASH, Head, NECK_POINTS, Pose, flatten};
 use super::vec3::Vec3;
 use super::{Gesture, RigKind};
@@ -80,6 +80,8 @@ pub struct Creature {
     feet: Feet,
     fore: Option<Feet>,
     head: HeadState,
+    /// Кончик хобота от его корня.
+    trunk: Option<Spring>,
     antic: Antic,
     /// Накладка поворота, применённая к телу на прошлом кадре.
     spin: f32,
@@ -188,12 +190,14 @@ impl Creature {
                 .as_ref()
                 .map(|pair| Feet::planted(&stance(pair), 1)),
             head: HeadState::resting(Vec3::ZERO, yaw),
+            trunk: None,
             antic: Antic::default(),
             spin: 0.0,
             look: Look::default(),
             pose: Pose::default(),
         };
         body.head = HeadState::resting(body.rest(), yaw);
+        body.trunk = body.trunk().map(|(_, rest)| Spring::resting(rest));
         body.pose = body.assemble();
         body
     }
@@ -230,6 +234,10 @@ impl Creature {
         }
         let aim = self.aim(accel, heading_yaw, input.look_at, run);
         self.head.update(dt, &aim, rng);
+        let rest = self.trunk().map(|(_, rest)| rest);
+        if let (Some(trunk), Some(rest), Some(shape)) = (&mut self.trunk, rest, &build.trunk) {
+            trunk.update(dt, rest, accel, self.scale, shape.slack);
+        }
     }
 
     fn heading(&self) -> Vec2 {

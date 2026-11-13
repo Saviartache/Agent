@@ -23,6 +23,11 @@ pub enum RigKind {
 
 impl RigKind {
     pub const ALL: [Self; 3] = [Self::Goose, Self::Pig, Self::Dachshund];
+    Elephant,
+}
+
+impl RigKind {
+    pub const ALL: [Self; 3] = [Self::Goose, Self::Pig, Self::Elephant];
 
     pub fn from_name(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|kind| kind.name() == name)
@@ -33,6 +38,7 @@ impl RigKind {
             Self::Goose => "goose",
             Self::Pig => "pig",
             Self::Dachshund => "dachshund",
+            Self::Elephant => "elephant",
         }
     }
 }
@@ -98,6 +104,7 @@ mod tests {
         assert_eq!(RigKind::from_name("goose"), Some(RigKind::Goose));
         assert_eq!(RigKind::from_name("pig"), Some(RigKind::Pig));
         assert_eq!(RigKind::from_name("dachshund"), Some(RigKind::Dachshund));
+        assert_eq!(RigKind::from_name("elephant"), Some(RigKind::Elephant));
         assert_eq!(RigKind::from_name("swan"), None);
     }
 }

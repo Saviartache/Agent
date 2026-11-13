@@ -4,6 +4,11 @@
 use super::scene::PixelRect;
 use super::shadow::{self, Oval};
 use super::{Canvas, Color, dachshund, goose, pig, pixel};
+//! проекция и мозаика; сам вид рисуют `goose`, `pig` и `elephant`.
+
+use super::scene::PixelRect;
+use super::shadow::{self, Oval};
+use super::{Canvas, Color, elephant, goose, pig, pixel};
 use crate::math::Vec2;
 use crate::rig::{Pose, RigKind, Vec3, flatten};
 
@@ -49,6 +54,7 @@ pub fn paint(canvas: &mut Canvas, origin: Vec2, pose: &Pose) {
         RigKind::Goose => goose::draw(canvas, &pen),
         RigKind::Pig => pig::draw(canvas, &pen),
         RigKind::Dachshund => dachshund::draw(canvas, &pen),
+        RigKind::Elephant => elephant::draw(canvas, &pen),
     }
 }
 

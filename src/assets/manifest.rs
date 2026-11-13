@@ -136,6 +136,7 @@ fn rig_kind(name: &str) -> Result<RigKind, AgentError> {
     RigKind::from_name(name).ok_or_else(|| {
         fail(format!(
             "неизвестное тело «{name}», есть: goose, pig, dachshund"
+            "неизвестное тело «{name}», есть: goose, pig, elephant"
         ))
     })
 }

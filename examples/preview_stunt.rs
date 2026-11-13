@@ -1,5 +1,6 @@
 //! Кадры сценки для проверки глазами: настоящая симуляция, эффекты и персонаж вместе.
 //! `cargo run -p ui-agent --example preview_stunt -- <goose|pig|dachshund> <сценка> <out.png> [ключи]`
+//! `cargo run -p ui-agent --example preview_stunt -- <goose|pig|elephant> <сценка> <out.png> [ключи]`
 //! `--secs N` — сколько снимать (8), `--every N` — шаг кадров (0.4),
 //! `--cursor x,y` — где курсор от персонажа (180,-40), `--orbit` — курсор ходит кругом,
 //! `--ui N` — масштаб экрана (1.5), `--crop w,h` — кадр вокруг персонажа (400,280). Печатает события и итог сценки.
@@ -43,6 +44,7 @@ fn parse() -> Result<Options, Box<dyn Error>> {
         .next()
         .and_then(|name| RigKind::from_name(&name))
         .ok_or("первый аргумент — тело: goose, pig или dachshund")?;
+        .ok_or("первый аргумент — тело: goose, pig или elephant")?;
     let stunt = args
         .next()
         .and_then(|name| Stunt::from_name(&name))

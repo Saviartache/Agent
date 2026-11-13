@@ -3,6 +3,7 @@
 pub mod canvas;
 pub mod creature;
 mod dachshund;
+mod elephant;
 mod goose;
 mod marks;
 mod pig;
