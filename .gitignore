@@ -1,0 +1,6 @@
+/target
+/dist
+.DS_Store
+
+# The lockfile of a library is not authoritative — hosts resolve their own.
+Cargo.lock

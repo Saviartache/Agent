@@ -1,0 +1,121 @@
+//! Сложение вида: чем гусь отличается от свинки при общем скелете.
+
+use super::feet::Stance;
+use crate::math::Vec2;
+use crate::rig::RigKind;
+
+/// Размеры — design px (умножаются на масштаб), углы — радианы.
+pub struct Build {
+    /// Полуоси туловища: вперёд, вбок, вверх.
+    pub body_radii: [f32; 3],
+    /// Высота центра тела над землёй в стойке.
+    pub stand_z: f32,
+    pub body_pitch: f32,
+    /// Основание шеи в осях тела: вперёд, вверх.
+    pub neck_base: [f32; 2],
+    /// Голова от основания шеи в покое: вперёд по земле, вверх.
+    pub neck_rest: [f32; 2],
+    /// Голова спящего в осях тела: вперёд, вбок, вверх.
+    pub curl_rest: [f32; 3],
+    /// Гибкость шеи: доля гусиного размаха жестов и отставания головы.
+    pub neck_slack: f32,
+    /// Может идти боком к ходу; иначе на ходу тело всегда развёрнуто по движению.
+    pub sidesteps: bool,
+    /// Голова поворачивается от оси тела не больше, рад.
+    pub head_turn: f32,
+    pub head_radius: f32,
+    pub head_pitch: f32,
+    /// Клюв или рыло от поверхности головы.
+    pub muzzle: f32,
+    /// Радиус отпечатка лапы.
+    pub print: f32,
+    /// Задняя (у птицы единственная) пара ног.
+    pub hind: Pair,
+    /// Передняя пара четвероногого.
+    pub fore: Option<Pair>,
+    /// Ноги в руках висят под телом: разнос от оси и расстояние вниз от центра.
+    pub dangle_side: f32,
+    pub dangle_down: f32,
+}
+
+const GOOSE: Build = Build {
+    body_radii: [15.0, 10.0, 9.5],
+    stand_z: 11.5,
+    body_pitch: 0.2,
+    neck_base: [10.0, 5.0],
+    neck_rest: [6.0, 13.5],
+    curl_rest: [-2.0, 4.5, 8.5],
+    neck_slack: 1.0,
+    sidesteps: true,
+    head_turn: 1.4,
+    head_radius: 5.0,
+    head_pitch: -0.12,
+    muzzle: 6.5,
+    print: 2.9,
+    // Лапы у гуся ближе к хвосту, чем к груди
+    hind: Pair {
+        along: -4.0,
+        side: 3.5,
+    },
+    fore: None,
+    dangle_side: 4.5,
+    dangle_down: 12.0,
+};
+
+/// Копилка на коротких ногах: голова почти с тело и сидит на нём без шеи.
+const PIG: Build = Build {
+    body_radii: [12.5, 10.0, 9.5],
+    stand_z: 12.0,
+    body_pitch: 0.0,
+    neck_base: [8.0, 2.0],
+    neck_rest: [5.0, 2.5],
+    curl_rest: [12.0, 1.5, 2.0],
+    neck_slack: 0.3,
+    sidesteps: false,
+    head_turn: 0.8,
+    head_radius: 8.0,
+    head_pitch: 0.0,
+    muzzle: 5.0,
+    print: 1.8,
+    // Задние ноги стоят у́же передних: четыре следа — четыре дорожки
+    hind: Pair {
+        along: -7.0,
+        side: 4.2,
+    },
+    fore: Some(Pair {
+        along: 7.5,
+        side: 5.4,
+    }),
+    dangle_side: 5.0,
+    dangle_down: 11.0,
+};
+
+impl RigKind {
+    /// Радиус отпечатка лапы, design px.
+    pub fn print_radius(self) -> f32 {
+        self.build().print
+    }
+
+    pub(super) fn build(self) -> &'static Build {
+        match self {
+            Self::Goose => &GOOSE,
+            Self::Pig => &PIG,
+        }
+    }
+}
+
+/// Пара ног: где она под телом.
+pub struct Pair {
+    /// От точки под телом по ходу.
+    pub along: f32,
+    /// Разнос ног от оси тела.
+    pub side: f32,
+}
+
+impl Pair {
+    /// Стойка пары у тела, стоящего в `pos`.
+    pub fn stance(&self, pos: Vec2, yaw: f32, vel: Vec2, scale: f32, grounded: bool) -> Stance {
+        let at = pos + Vec2::from_angle(yaw) * (self.along * scale);
+        Stance::new(at, yaw, vel, scale, self.side * scale, grounded)
+    }
+}
