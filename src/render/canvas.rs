@@ -23,6 +23,10 @@ pub struct Canvas<'a> {
     height: u32,
 }
 
+/// Доля закрытия неровного квадрата: с этой — сплошь, с меньшей — шашечкой, ниже — пусто.
+const RETRO_SOLID: f32 = 0.6;
+const RETRO_DITHER: f32 = 0.25;
+
 fn div255(x: u32) -> u32 {
     let x = x + 128;
     (x + (x >> 8)) >> 8
@@ -113,7 +117,30 @@ impl<'a> Canvas<'a> {
     /// `phase` — сдвиг сетки, чтобы она была привязана к миру, а не к холсту.
     pub fn pixelate(&mut self, block: u32, phase: [u32; 2], strength: f32) {
         let mix = alpha8(strength);
-        if block < 2 || mix == 0 {
+        if mix == 0 {
+            return;
+        }
+        self.each_block(block, phase, |canvas, xs, ys, _| {
+            canvas.flatten_block(xs, ys, mix)
+        });
+    }
+
+    /// Ретро-клетки: неровный квадрат `block`×`block` становится одним цветом, край — шашечкой
+    /// (`odd` — чётность клетки мира в начале сетки). Ровные квадраты (тень, лужа) не меняются.
+    pub fn retro(&mut self, block: u32, phase: [u32; 2], odd: bool) {
+        self.each_block(block, phase, |canvas, xs, ys, index| {
+            canvas.retro_block(xs, ys, (index[0] + index[1] + usize::from(odd)) % 2 == 0)
+        });
+    }
+
+    /// Квадраты сетки со сдвигом `phase` и номером квадрата от начала сетки.
+    fn each_block(
+        &mut self,
+        block: u32,
+        phase: [u32; 2],
+        mut f: impl FnMut(&mut Self, Range<usize>, Range<usize>, [usize; 2]),
+    ) {
+        if block < 2 {
             return;
         }
         let (width, height, block) = (self.width as usize, self.height as usize, block as usize);
@@ -123,12 +150,59 @@ impl<'a> Canvas<'a> {
             lead.into_iter().chain((first..limit).step_by(block))
         };
         let (first_x, first_y) = (first(phase[0]), first(phase[1]));
+        // Номер квадрата, в который попадает пиксель холста
+        let index = |at: usize, phase: u32| (at + phase as usize % block) / block;
         for y0 in starts(first_y, height) {
             let y1 = if y0 < first_y { first_y } else { y0 + block }.min(height);
             for x0 in starts(first_x, width) {
                 let x1 = if x0 < first_x { first_x } else { x0 + block }.min(width);
-                self.flatten_block(x0..x1, y0..y1, mix);
+                f(
+                    self,
+                    x0..x1,
+                    y0..y1,
+                    [index(x0, phase[0]), index(y0, phase[1])],
+                );
             }
+        }
+    }
+
+    fn retro_block(&mut self, xs: Range<usize>, ys: Range<usize>, even: bool) {
+        let center = ((xs.start + xs.end) / 2, (ys.start + ys.end) / 2);
+        let first = self.pixels[ys.start * self.stride + xs.start];
+        let (mut under, mut top, mut sum, mut count) = (first, first, 0u32, 0u32);
+        let mut flat = true;
+        for y in ys.clone() {
+            for x in xs.clone() {
+                let pixel = self.pixels[y * self.stride + x];
+                let alpha = pixel >> 24;
+                flat &= pixel == first;
+                sum += alpha;
+                count += 1;
+                if alpha < under >> 24 {
+                    under = pixel;
+                }
+                // Середина квадрата — при равной альфе
+                if alpha > top >> 24 || (alpha == top >> 24 && (x, y) == center) {
+                    top = pixel;
+                }
+            }
+        }
+        if flat {
+            return;
+        }
+        let (low, high) = (under >> 24, top >> 24);
+        let fill = if high == low {
+            top
+        } else {
+            let coverage = (sum as f32 / count as f32 - low as f32) / (high - low) as f32;
+            match coverage {
+                c if c >= RETRO_SOLID => top,
+                c if c >= RETRO_DITHER && even => top,
+                _ => under,
+            }
+        };
+        for y in ys {
+            self.pixels[y * self.stride..][xs.clone()].fill(fill);
         }
     }
 
@@ -425,6 +499,37 @@ mod tests {
         let alpha = |p: u32| p >> 24;
         assert!(alpha(buffer[0]) > 0x40 && alpha(buffer[0]) < 0xFF);
         assert!(alpha(buffer[3]) > 0 && alpha(buffer[3]) < 0x40);
+    }
+
+    #[test]
+    fn retro_makes_whole_cells_and_dithers_half_covered_ones() {
+        const SHADE: u32 = 0x5700_0000;
+        let cell = |b: &[u32], x: usize, y: usize| {
+            let at = |dx, dy| b[(2 * y + dy) * 4 + 2 * x + dx];
+            let first = at(0, 0);
+            [at(1, 0), at(0, 1), at(1, 1)]
+                .iter()
+                .all(|p| *p == first)
+                .then_some(first)
+        };
+        // Квадраты 2×2: на три четверти, наполовину, ровная тень, тень наполовину под краем
+        let mut base = vec![0u32; 16];
+        base[8..10].fill(SHADE);
+        base[12..14].fill(SHADE);
+        base[10..12].fill(SHADE);
+        base[14] = SHADE;
+        base[15] = SHADE;
+        for i in [0, 1, 4, 2, 6, 10, 11] {
+            base[i] = RED;
+        }
+        for (odd, half, edge) in [(false, 0, RED), (true, RED, SHADE)] {
+            let mut b = base.clone();
+            canvas(&mut b, 4).retro(2, [0, 0], odd);
+            assert_eq!(cell(&b, 0, 0), Some(RED));
+            assert_eq!(cell(&b, 1, 0), Some(half), "шашечка, odd={odd}");
+            assert_eq!(cell(&b, 0, 1), Some(SHADE), "ровная тень не тронута");
+            assert_eq!(cell(&b, 1, 1), Some(edge), "край над тенью, odd={odd}");
+        }
     }
 
     fn sprite(pixels: &[u32], side: usize) -> Sprite<'_> {

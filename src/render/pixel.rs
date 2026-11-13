@@ -24,6 +24,22 @@ pub fn pixelate(canvas: &mut Canvas, origin: Vec2, scale: f32) {
         return;
     }
     let cell = cell(scale);
+    canvas.pixelate(cell, phase(origin, cell), STRENGTH);
+}
+
+/// Ретро вместо мозаики для того, что лежит на земле: целые клетки той же мировой сетки,
+/// одним цветом, край — шашечкой в лад с тенью.
+pub fn retro(canvas: &mut Canvas, origin: Vec2, scale: f32) {
+    if !(origin.x.is_finite() && origin.y.is_finite()) {
+        return;
+    }
+    let cell = cell(scale);
+    let index = |at: f32| (at.round() as i64).div_euclid(i64::from(cell));
+    let odd = (index(origin.x) + index(origin.y)).rem_euclid(2) == 1;
+    canvas.retro(cell, phase(origin, cell), odd);
+}
+
+fn phase(origin: Vec2, cell: u32) -> [u32; 2] {
     let phase = |at: f32| (at.round() as i64).rem_euclid(i64::from(cell)) as u32;
-    canvas.pixelate(cell, [phase(origin.x), phase(origin.y)], STRENGTH);
+    [phase(origin.x), phase(origin.y)]
 }

@@ -224,7 +224,7 @@ pub fn draw_effects(canvas: &mut Canvas, origin: Vec2, effects: &Effects<'_>, ui
     for particle in effects.particles.iter() {
         marks::draw(canvas, origin, &particle);
     }
-    pixel::pixelate(canvas, origin, ui_scale);
+    pixel::retro(canvas, origin, ui_scale);
 }
 
 // --- карточка ---
