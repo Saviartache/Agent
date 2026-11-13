@@ -1,6 +1,6 @@
-//! Уши-лопухи слоника: плоские эллипсы на шарнире у затылка. Раскрываются на ходу,
-//! в прыжке и по накладке (`Antic::wings`/`flap`), а на пружине отстают от поворота
-//! головы и разгона тела.
+//! Уши-лопухи слоника: плоские эллипсы на шарнире у затылка, изнанкой вперёд. Раскрываются
+//! на ходу, в прыжке и по накладке (`Antic::wings`/`flap`), на пружине отстают от поворота
+//! головы и разгона тела, во сне обвисают, торчком и под землю не уходят.
 
 use std::f32::consts::TAU;
 
@@ -13,17 +13,23 @@ pub struct EarShape {
     pub root: [f32; 3],
     /// Полуоси лопуха: от шарнира наружу и вниз.
     pub radii: [f32; 2],
-    /// Раскрытие от прижатого назад: в покое и целиком.
+    /// Угол от прижатого назад: в покое (больше прямого — чашей к морде) и раскрытое.
     pub open: [f32; 2],
+    /// Во сне уши обвисают: шарнир ниже на столько.
+    pub slump: f32,
 }
 
 /// Центр лопуха от шарнира в долях полуосей: наружу и вниз.
 const REACH: f32 = 0.85;
 const DROP: f32 = 0.6;
 /// Сдвиг низа лопуха наружу в долях полуоси вниз.
-const SLANT: f32 = 0.35;
+const SLANT: f32 = 0.5;
+/// Раскрытое целиком отводит низ наружу ещё на столько.
+const FAN: f32 = 0.6;
 /// Насколько ухо висит к земле, а не от макушки: лопух мягкий.
-const FLOP: f32 = 0.7;
+const FLOP: f32 = 0.5;
+/// Выше шарнира ухо поднимается не больше этой доли полуоси вниз.
+const LIFT: f32 = 0.6;
 /// Раскрыты целиком при такой разнице высот задних ступней и таком прыжке, design px.
 const STRIDE: f32 = 7.0;
 const HOP: f32 = 6.0;
@@ -66,7 +72,7 @@ impl Flaps {
     /// вперёд, design px/с².
     pub fn update(&mut self, dt: f32, want: f32, turn: f32, push: f32) {
         for (i, side) in SIDES.into_iter().enumerate() {
-            let lag = (SWING * turn * side - INERTIA * push).clamp(-MAX_LAG, MAX_LAG);
+            let lag = (-(SWING * turn * side) - INERTIA * push).clamp(-MAX_LAG, MAX_LAG);
             let pull = (want + lag - self.open[i]) * (OMEGA * OMEGA);
             self.vel[i] += (pull - self.vel[i] * (2.0 * DAMPING * OMEGA)) * dt;
             self.open[i] += self.vel[i] * dt;
@@ -77,29 +83,41 @@ impl Flaps {
         }
     }
 
-    /// Уши на голове с центром `center` и осями `head`.
-    pub fn place(&self, shape: &EarShape, head: &Frame, center: Vec3, radius: f32) -> [Ear; 2] {
+    /// Уши на голове с центром `center` и осями `head`; `tuck` — глубина сна.
+    pub fn place(
+        &self,
+        shape: &EarShape,
+        head: &Frame,
+        center: Vec3,
+        radius: f32,
+        tuck: f32,
+    ) -> [Ear; 2] {
+        let back = Vec3::new(-head.forward.x, -head.forward.y, 0.0).normalized();
         std::array::from_fn(|i| {
             let side = head.right * SIDES[i];
             let (sin, cos) = self.open[i].sin_cos();
-            // Шарнир у переднего края: прижатое ухо лежит назад изнанкой к голове
+            // Угол от прижатого назад; за прямым ухо загибается к морде
             let blade = side * sin - head.forward * cos;
             let hang = hang(blade, head.up);
-            let inner = blade.cross(hang) * SIDES[i];
+            // Изнанка смотрит вперёд: в покое — к морде, раскрытое — прямо
+            let inner = hang.cross(blade) * SIDES[i];
             let [x, y, z] = shape.root;
+            let z = z - shape.slump * tuck.clamp(0.0, 1.0);
             let root = center + (side * x + head.forward * y + head.up * z) * radius;
-            // Низ лопуха отходит наружу: лист висит, а не тарелка
-            let down = blade * SLANT + hang;
+            // Низ лопуха отходит наружу: лист висит, а не тарелка; раскрытый — веером
+            let spread = (shape.open[0] - self.open[i]) / (shape.open[0] - shape.open[1]);
+            let down = blade * (SLANT + FAN * spread.clamp(0.0, 1.0)) + hang;
             let axes = [
                 blade * (shape.radii[0] * radius),
                 down * (shape.radii[1] * radius),
             ];
-            grounded(Ear {
+            let ear = Ear {
                 root,
                 center: root + axes[0] * REACH + axes[1] * DROP,
                 axes,
                 inner,
-            })
+            };
+            grounded(fallen(ear, back))
         })
     }
 }
@@ -111,6 +129,21 @@ fn hang(blade: Vec3, up: Vec3) -> Vec3 {
     if hang == Vec3::ZERO { up * -1.0 } else { hang }
 }
 
+/// Мягкое ухо торчком не стоит: поднятое над шарниром выше `LIFT` своей полуоси вниз
+/// валится назад, на голову (на боку).
+fn fallen(ear: Ear, back: Vec3) -> Ear {
+    let reach = ear.axes[0].z.hypot(ear.axes[1].z);
+    let rise = ear.center.z - ear.root.z + reach;
+    let limit = LIFT * ear.axes[1].length();
+    if rise <= limit {
+        return ear;
+    }
+    let k = limit / rise;
+    flattened(ear, k, |v| {
+        Vec3::new(v.x, v.y, v.z * k) + back * (v.z.max(0.0) * (1.0 - k))
+    })
+}
+
 /// Ухо не уходит под землю: ниже шарнира сплющивается по высоте и ложится на неё.
 fn grounded(ear: Ear) -> Ear {
     let reach = ear.axes[0].z.hypot(ear.axes[1].z);
@@ -119,14 +152,21 @@ fn grounded(ear: Ear) -> Ear {
         return ear;
     }
     let k = (ear.root.z / below).max(0.0);
-    let squash = |v: Vec3| Vec3::new(v.x, v.y, v.z * k);
+    flattened(ear, k, |v| Vec3::new(v.x, v.y, v.z * k))
+}
+
+/// Ухо, сжатое по высоте до доли `k` отображением `flat` от шарнира.
+fn flattened(ear: Ear, k: f32, flat: impl Fn(Vec3) -> Vec3) -> Ear {
     let n = ear.inner;
     Ear {
         root: ear.root,
-        center: ear.root + squash(ear.center - ear.root),
-        axes: ear.axes.map(squash),
-        // Нормаль при сжатии по высоте наклоняется к отвесу
-        inner: Vec3::new(n.x * k, n.y * k, n.z).normalized(),
+        center: ear.root + flat(ear.center - ear.root),
+        axes: ear.axes.map(&flat),
+        // Чем площе, тем больше изнанкой вниз: лежит серым вверх
+        inner: Vec3::new(n.x * k, n.y * k, n.z)
+            .normalized()
+            .lerp(Vec3::new(0.0, 0.0, -1.0), 1.0 - k)
+            .normalized(),
     }
 }
 
@@ -137,7 +177,8 @@ mod tests {
     const SHAPE: EarShape = EarShape {
         root: [0.7, -0.3, 0.3],
         radii: [0.6, 0.8],
-        open: [0.5, 1.5],
+        open: [1.95, 1.45],
+        slump: 0.5,
     };
 
     fn settle(want: f32, turn: f32, push: f32) -> Flaps {
@@ -158,22 +199,25 @@ mod tests {
     }
 
     #[test]
-    fn spread_ear_turns_its_inner_side_back_and_sticks_out() {
+    fn inner_side_faces_forward_and_spread_ear_sticks_out() {
         let head = Frame::new(0.0, 0.0, 0.0);
-        let [calm, _] = settle(SHAPE.open[0], 0.0, 0.0).place(&SHAPE, &head, Vec3::ZERO, 10.0);
-        let [open, _] = settle(SHAPE.open[1], 0.0, 0.0).place(&SHAPE, &head, Vec3::ZERO, 10.0);
+        // Голова высоко: земля уши не сплющивает
+        let at = Vec3::new(0.0, 0.0, 50.0);
+        let place = |open, tuck| settle(open, 0.0, 0.0).place(&SHAPE, &head, at, 10.0, tuck)[0];
+        let (calm, open) = (place(SHAPE.open[0], 0.0), place(SHAPE.open[1], 0.0));
         // Левое ухо: наружу — против `right`
         let out = |ear: &Ear| -ear.center.dot(head.right);
-        assert!(out(&open) > out(&calm) + 2.0);
+        assert!(out(&open) > out(&calm) + 1.0);
+        for ear in [calm, open] {
+            assert!(ear.inner.dot(head.forward) > 0.7, "изнанкой вперёд {ear:?}");
+        }
         assert!(
-            calm.inner.dot(head.right) > 0.5,
-            "прижатое — изнанкой к голове"
-        );
-        assert!(
-            open.inner.dot(head.forward) < -0.9,
-            "раскрытое — изнанкой назад"
+            calm.inner.dot(head.right) > 0.2,
+            "в покое — чашей к морде, наружной стороной вбок"
         );
         assert!(calm.axes[0].dot(calm.inner).abs() < 1e-4);
+        let asleep = place(SHAPE.open[0], 1.0);
+        assert!(asleep.root.z < calm.root.z - 2.0, "во сне обвисают");
     }
 
     #[test]
@@ -181,11 +225,12 @@ mod tests {
         let want = SHAPE.open[0];
         let still = settle(want, 0.0, 0.0);
         let turning = settle(want, 3.0, 0.0);
+        // Раскрытое ближе к прямому углу
         assert!(
-            turning.open[1] > still.open[1] + 0.2,
+            turning.open[1] < still.open[1] - 0.2,
             "внешнее к повороту раскрыто"
         );
-        assert!(turning.open[0] < still.open[0] - 0.2);
+        assert!(turning.open[0] > still.open[0] + 0.2);
         let starting = settle(want, 0.0, 300.0);
         assert!(starting.open.iter().all(|a| *a < want - 0.2));
     }

@@ -397,11 +397,15 @@ mod tests {
             flap: 0.25,
             ..Antic::default()
         };
-        for heading in [TOWARD, AWAY] {
-            let (calm, ..) = render(&posed(heading, Antic::default()));
-            let (spread, ..) = render(&posed(heading, flapping));
-            assert!(solid(&spread, EAR) > solid(&calm, EAR) + 50, "{heading:?}");
-        }
+        // Ухо далеко за контуром головы: наружная сторона и изнанка
+        let wide = |antic| {
+            let pose = posed(TOWARD, Gesture::Idle, antic);
+            let [a, b] = beside(&pose, EAR, 1.5);
+            let [c, d] = beside(&pose, ears::INNER, 1.5);
+            a + b + c + d
+        };
+        let (calm, spread) = (wide(Antic::default()), wide(flapping));
+        assert!(spread > calm + 30, "{calm} {spread}");
     }
 
     /// Слои ушей, левого и правого.
@@ -445,39 +449,64 @@ mod tests {
         assert!(near.depth < eyes.depth);
     }
 
-    #[test]
-    fn from_the_front_both_ears_stick_out_beside_the_head() {
-        let elephant = pose(TOWARD);
-        let (pixels, w, _) = render(&elephant);
-        let rect = super::super::creature::rect(&elephant, Creature::extent(SCALE));
+    /// Пиксели цвета левее и правее головы дальше `reach` её радиусов от центра.
+    fn beside(pose: &Pose, color: Color, reach: f32) -> [usize; 2] {
+        let (pixels, w, _) = render(pose);
+        let rect = super::super::creature::rect(pose, Creature::extent(SCALE));
         let origin = Vec2::new(rect.x as f32, rect.y as f32) - Vec2::new(1.0, 1.0) * MARGIN as f32;
-        let center = elephant.screen(elephant.head.center) - origin;
-        let radius = elephant.head.radius;
-        let ear = 0xFF00_0000 | EAR.0;
-        let beside = |out: f32| {
-            (0..pixels.len())
-                .filter(|i| pixels[*i] == ear)
-                .filter(|i| ((*i % w) as f32 - center.x) * out > radius)
-                .count()
-        };
-        assert!(
-            beside(-1.0) > 30 && beside(1.0) > 30,
-            "{} {}",
-            beside(-1.0),
-            beside(1.0)
-        );
+        let center = pose.screen(pose.head.center) - origin;
+        let gap = pose.head.radius * reach;
+        [-1.0, 1.0].map(|out| {
+            let mut side = pixels.clone();
+            for (i, p) in side.iter_mut().enumerate() {
+                if ((i % w) as f32 - center.x) * out <= gap {
+                    *p = 0;
+                }
+            }
+            near(&side, color)
+        })
     }
 
     #[test]
-    fn inner_side_shows_only_when_it_faces_the_viewer() {
-        let (front, ..) = render(&pose(TOWARD));
-        let (back, ..) = render(&pose(AWAY));
-        assert_eq!(near(&front, ears::INNER), 0);
-        assert!(near(&back, ears::INNER) > 20);
+    fn from_the_front_both_ears_stick_out_pink_inside() {
+        let elephant = pose(TOWARD);
+        let out = beside(&elephant, EAR, 1.0);
+        assert!(out.iter().all(|n| *n > 30), "{out:?}");
+        let inner = beside(&elephant, ears::INNER, 0.0);
+        assert!(inner.iter().all(|n| *n > 20), "{inner:?}");
     }
 
-    /// Слоник секунду в накладке, взгляд прямо по ходу.
-    fn posed(heading: Vec2, antic: Antic) -> Pose {
+    #[test]
+    fn from_behind_and_in_profile_ears_show_the_grey_outside() {
+        for heading in [AWAY, RIGHT, Vec2::new(-1.0, 0.0), Vec2::new(0.7, -0.7)] {
+            let (pixels, ..) = render(&pose(heading));
+            assert_eq!(near(&pixels, ears::INNER), 0, "{heading:?}");
+            assert!(near(&pixels, EAR) > 50, "{heading:?}");
+        }
+        let out = beside(&pose(AWAY), EAR, 1.0);
+        assert!(out.iter().all(|n| *n > 20), "{out:?}");
+    }
+
+    #[test]
+    fn asleep_ears_stay_below_the_crown() {
+        for (x, y) in [(1.0, 0.0), (0.7, 0.7), (0.0, 1.0), (-0.7, 0.7)] {
+            for heading in [Vec2::new(x, y), Vec2::new(-x, -y)] {
+                let elephant = posed(heading, Gesture::Sleep, Antic::default());
+                let pen = Pen {
+                    origin: Vec2::ZERO,
+                    pose: &elephant,
+                };
+                let crown = pen.at(elephant.head.center).y - elephant.head.radius;
+                for ear in elephant.ears.unwrap() {
+                    let top = ears::top(&pen, &ear);
+                    assert!(top >= crown, "{heading:?} {top} {crown}");
+                }
+            }
+        }
+    }
+
+    /// Слоник секунду в жесте и накладке, взгляд прямо по ходу.
+    fn posed(heading: Vec2, gesture: Gesture, antic: Antic) -> Pose {
         let at = test_support::AT;
         let mut rig = Creature::new(RigKind::Elephant, at, heading, SCALE);
         let input = RigInput {
@@ -485,7 +514,7 @@ mod tests {
             vel: Vec2::ZERO,
             heading,
             look_at: Some(at + heading * 1000.0),
-            gesture: Gesture::Idle,
+            gesture,
             progress: 0.0,
             scale: SCALE,
             grounded: true,

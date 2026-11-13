@@ -339,7 +339,13 @@ impl Creature {
         };
         pose.ears = self.ears.zip(build.ears.as_ref()).map(|(ears, shape)| {
             let head = &pose.head;
-            ears.place(shape, &pose.head_frame(), head.center, head.radius)
+            ears.place(
+                shape,
+                &pose.head_frame(),
+                head.center,
+                head.radius,
+                pose.tuck,
+            )
         });
         if self.size != 1.0 {
             pose.zoomed(self.size);

@@ -119,8 +119,8 @@ impl Pen<'_> {
         self.at(self.pose.head.center) + head_flat(offset)
     }
 
-    /// Плоский эллипс у головы: центр от её центра и полуоси, той же проекцией.
-    pub fn disc_on_head(&self, offset: Vec3, axes: [Vec3; 2]) -> Oval {
+    /// Эллипс или эллипсоид у головы: центр от её центра и полуоси, той же проекцией.
+    pub fn disc_on_head<const N: usize>(&self, offset: Vec3, axes: [Vec3; N]) -> Oval {
         silhouette(self.on_head(offset), axes.map(head_flat))
     }
 
