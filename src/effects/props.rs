@@ -35,8 +35,6 @@ pub enum PropKind {
     /// Нарисованная стрелочка курсора: настоящий курсор не трогаем.
     Arrow,
     Butterfly,
-    /// Тапок, который приносит такса.
-    Slipper,
     /// Скомканная бумажка или записка енота.
     Paper,
 }
@@ -68,7 +66,6 @@ impl PropKind {
             Self::Feather => 5.0,
             Self::Arrow => 8.0,
             Self::Butterfly => 6.0,
-            Self::Slipper => 8.0,
             Self::Paper => 4.5,
         }
     }

@@ -1,6 +1,6 @@
 # ui-agent — памятка агенту
 
-Персонаж рабочего стола Windows (свинка, гусь, такса, слоник, енот или пингвин) и предметы
+Персонаж рабочего стола Windows (свинка, гусь, слоник, енот или пингвин) и предметы
 вокруг него. Прежде чем
 что-либо менять, прочитай две заметки в `docs/`:
 
@@ -21,9 +21,9 @@
   в `platform`, поток — в `runtime`; `unsafe` только в `platform`.
 - Новый вид рисуется через `render/shadow.rs` (тень) и `render/pixel.rs` (мозаика),
   своих теней и стилей не заводить.
-- Виды тела (`RigKind`: `goose`, `pig`, `dachshund`, `elephant`, `raccoon`, `penguin`) делят
+- Виды тела (`RigKind`: `goose`, `pig`, `elephant`, `raccoon`, `penguin`) делят
   один скелет `rig/creature`; вид — это сложение в `rig/creature/build.rs` и свой рисовальщик
-  в `render/` (`<вид>.rs`: `goose.rs`, `pig.rs`, `dachshund.rs`, `elephant.rs`, `raccoon.rs`,
+  в `render/` (`<вид>.rs`: `goose.rs`, `pig.rs`, `elephant.rs`, `raccoon.rs`,
   `penguin.rs`), который зовёт общий `render/creature.rs`. Новый вид — по этим трём местам плюс
   набор в `assets/` и свой каталог сценок `sim/stunt/<вид>/`.
 - Сценки (`Stunt`): общие — `sim/stunt/common/`, видовые — `sim/stunt/<вид>/` (по каталогу на вид);
@@ -40,7 +40,7 @@ cargo fmt --all -- --check
 cargo test -p ui-agent
 cargo clippy -p ui-agent --all-targets -- -D warnings
 cargo clippy -p ui-agent --all-targets --target x86_64-pc-windows-gnu -- -D warnings
-cargo run -p ui-agent --example preview_rig -- pig out.png # вид тела кадрами (pig | goose | dachshund | elephant | raccoon | penguin)
+cargo run -p ui-agent --example preview_rig -- pig out.png # вид тела кадрами (pig | goose | elephant | raccoon | penguin)
 cargo run -p ui-agent --example preview_stunt -- pig oops out.png --ui 3 --crop 140,110  # сценка кадрами
 ./scripts/build-package.sh                                 # тестовый пакет в dist/ (все персонажи)
 cargo test --manifest-path console/Cargo.toml              # консоль пакета (свой воркспейс)

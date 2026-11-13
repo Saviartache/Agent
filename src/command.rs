@@ -106,7 +106,6 @@ impl Notification {
 const COMMON: Option<RigKind> = None;
 const GOOSE: Option<RigKind> = Some(RigKind::Goose);
 const PIG: Option<RigKind> = Some(RigKind::Pig);
-const DACHSHUND: Option<RigKind> = Some(RigKind::Dachshund);
 const ELEPHANT: Option<RigKind> = Some(RigKind::Elephant);
 const RACCOON: Option<RigKind> = Some(RigKind::Raccoon);
 const PENGUIN: Option<RigKind> = Some(RigKind::Penguin);
@@ -256,14 +255,6 @@ stunts! {
     PiggyBank = "piggy_bank", PIG;
     /// Свинка: ножками вверх, дрыгает.
     BellyUp = "belly_up", PIG;
-    /// Такса: находит тапок, треплет и приносит к курсору.
-    Slipper = "slipper", DACHSHUND;
-    /// Такса: роет нору у края экрана и ныряет в неё.
-    Burrow = "burrow", DACHSHUND;
-    /// Такса: длинное тело застревает на развороте.
-    UTurn = "u_turn", DACHSHUND;
-    /// Такса: тявкает на курсор.
-    Yap = "yap", DACHSHUND;
     /// Слоник: трубит, задрав хобот; нотки и волны.
     Trumpet = "trumpet", ELEPHANT;
     /// Слоник: набирает хоботом воду из лужи и поливает себе спину.

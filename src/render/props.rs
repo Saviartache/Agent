@@ -141,19 +141,8 @@ fn draw_one(canvas: &mut Canvas, origin: Vec2, prop: &Prop) {
         PropKind::Feather => feather(&mut pen, c, r, prop.angle),
         PropKind::Arrow => cursor(&mut pen, c, r),
         PropKind::Butterfly => butterfly(&mut pen, c, r, prop.age),
-        PropKind::Slipper => slipper(&mut pen, base, r, prop.angle),
         PropKind::Paper => paper(&mut pen, c, r, prop.angle),
     }
-}
-
-/// Тапок лежит на земле носком по `angle`: подошва и верх у носка.
-fn slipper(pen: &mut Pen, base: Vec2, r: f32, angle: f32) {
-    let toe = Vec2::new(angle.cos(), angle.sin() * DEPTH);
-    let turn = toe.y.atan2(toe.x);
-    let sole = base - Vec2::new(0.0, r * 0.2);
-    pen.oval(sole, Vec2::new(r, r * 0.45), turn, Color(0xF2_E3_B3));
-    let cap = sole + toe * (r * 0.4) - Vec2::new(0.0, r * 0.25);
-    pen.oval(cap, Vec2::new(r * 0.6, r * 0.42), turn, Color(0x3D_8B_D9));
 }
 
 fn ball(pen: &mut Pen, c: Vec2, r: f32, angle: f32) {
@@ -403,7 +392,7 @@ mod tests {
     use crate::render::scene::{Effects, draw_effects, effects_rect, enclosing};
     use crate::rng::Rng;
 
-    const KINDS: [PropKind; 15] = [
+    const KINDS: [PropKind; 14] = [
         PropKind::Ball,
         PropKind::Apple,
         PropKind::Acorn,
@@ -417,7 +406,6 @@ mod tests {
         PropKind::Feather,
         PropKind::Arrow,
         PropKind::Butterfly,
-        PropKind::Slipper,
         PropKind::Paper,
     ];
     const SIDE: usize = 300;

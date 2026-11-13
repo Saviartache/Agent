@@ -158,38 +158,6 @@ const ELEPHANT: Build = Build {
     gesture_wings: false,
 };
 
-/// Такса: длинное низкое тело на очень коротких ногах, заметная шея, вытянутая морда.
-const DACHSHUND: Build = Build {
-    body_radii: [18.0, 6.2, 6.2],
-    stand_z: 7.8,
-    body_pitch: 0.0,
-    neck_base: [13.0, 3.0],
-    neck_rest: [5.0, 8.0],
-    curl_rest: [21.0, 2.0, 0.0],
-    neck_slack: 0.6,
-    sidesteps: false,
-    head_turn: 1.1,
-    head_radius: 5.2,
-    head_pitch: -0.1,
-    muzzle: 6.0,
-    print: 1.6,
-    hind: Pair {
-        along: -12.0,
-        side: 3.4,
-    },
-    fore: Some(Pair {
-        along: 11.5,
-        side: 3.8,
-    }),
-    dangle_side: 3.8,
-    dangle_down: 8.5,
-    trunk: None,
-    prowl: 0.0,
-    stride: 1.0,
-    waddle: 0.0,
-    gesture_wings: false,
-};
-
 /// Длинное низкое тело с горбатой спиной, острая морда на короткой шее; крадётся.
 const RACCOON: Build = Build {
     body_radii: [12.0, 8.0, 7.0],
@@ -263,7 +231,6 @@ impl RigKind {
         match self {
             Self::Goose => &GOOSE,
             Self::Pig => &PIG,
-            Self::Dachshund => &DACHSHUND,
             Self::Elephant => &ELEPHANT,
             Self::Raccoon => &RACCOON,
             Self::Penguin => &PENGUIN,

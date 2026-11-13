@@ -2,7 +2,7 @@
 
 **Живой персонаж рабочего стола Windows для ваших Rust-приложений**
 
-Свинка, гусь, такса, слоник, енот или пингвин гуляют поверх окон, замечают курсор, приносят карточки уведомлений
+Свинка, гусь, слоник, енот или пингвин гуляют поверх окон, замечают курсор, приносят карточки уведомлений
 и показывают, чем занято приложение: думают, заняты, радуются успеху, расстраиваются из-за ошибки.
 
 ![Rust](https://img.shields.io/badge/Rust-2024-orange?logo=rust)
@@ -25,20 +25,18 @@
 <tr>
 <th>Свинка</th>
 <th>Гусь</th>
-<th>Такса</th>
+<th>Слоник</th>
 </tr>
 <tr>
 <td><img src="docs/sheet-pig.png" alt="Спрайт-лист свинки"></td>
 <td><img src="docs/sheet-goose.png" alt="Спрайт-лист гуся"></td>
-<td><img src="docs/sheet-dachshund.png" alt="Спрайт-лист таксы"></td>
+<td><img src="docs/sheet-elephant.png" alt="Спрайт-лист слоника"></td>
 </tr>
 <tr>
-<th>Слоник</th>
 <th>Енот</th>
 <th>Пингвин</th>
 </tr>
 <tr>
-<td><img src="docs/sheet-elephant.png" alt="Спрайт-лист слоника"></td>
 <td><img src="docs/sheet-raccoon.png" alt="Спрайт-лист енота"></td>
 <td><img src="docs/sheet-penguin.png" alt="Спрайт-лист пингвина"></td>
 </tr>
@@ -57,8 +55,8 @@
 
 ## Сценки
 
-Кроме жестов, у персонажа есть **69 сценок**: короткие истории с предметами, частицами и следами.
-22 из них общие, у гуся 15 своих, у свинки 16, у таксы, слоника, енота и пингвина по 4.
+Кроме жестов, у персонажа есть **65 сценок**: короткие истории с предметами, частицами и следами.
+22 из них общие, у гуся 15 своих, у свинки 16, у слоника, енота и пингвина по 4.
 
 <img src="docs/stunt-pig-mud-bath.png" alt="Свинка принимает грязевую ванну" width="100%">
 
@@ -70,7 +68,6 @@
 | Все    | `cursor_heist` `zoomies` `note` `chase` `boop` `startle` `sneeze` `hiccups` `dance` `stretch` `stare` `nap` `gift` `ball` `slip` `trip_over_card` `self_scare` `peek` `edge_tumble` `butterfly` `flatten` `fake_death` |
 | Гусь   | `leaf_pile` `wall_slam` `honk` `hiss` `march` `skid` `flight` `preen` `crumbs` `bath` `nest` `egg_surprise` `scribble` `neck_tangle` `goslings`                                                                        |
 | Свинка | `mud_bath` `oops` `fart_jump` `faceplant` `slide` `stuck` `shake_off` `mud_nap` `puddle_hop` `dig` `sniff` `snack` `bulldozer` `tail_chase` `piggy_bank` `belly_up`                                                    |
-| Такса  | `slipper` `burrow` `u_turn` `yap`                                                                                                                                                                                      |
 | Слоник | `trumpet` `shower` `mouse_scare` `trunk_nap`                                                                                                                                                                           |
 | Енот   | `rinse` `rummage` `stash` `lookout`                                                                                                                                                                                    |
 | Пингвин | `toboggan` `wipeout` `applause` `strut`                                                                                                                                                                               |

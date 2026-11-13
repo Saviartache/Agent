@@ -7,7 +7,6 @@
 //! (`Sim::drive`), гусята (`Sim::flock`) и накладка гаснут вместе со сценкой.
 
 mod common;
-mod dachshund;
 mod elephant;
 mod goose;
 mod penguin;
@@ -131,10 +130,6 @@ acts! {
     TailChase: pig::tail_chase::TailChase => begin_tail_chase, step_tail_chase;
     PiggyBank: pig::piggy_bank::PiggyBank => begin_piggy_bank, step_piggy_bank;
     BellyUp: pig::belly_up::BellyUp => begin_belly_up, step_belly_up;
-    Slipper: dachshund::slipper::Slipper => begin_slipper, step_slipper;
-    Burrow: dachshund::burrow::Burrow => begin_burrow, step_burrow;
-    UTurn: dachshund::u_turn::UTurn => begin_u_turn, step_u_turn;
-    Yap: dachshund::yap::Yap => begin_yap, step_yap;
     Trumpet: elephant::trumpet::Trumpet => begin_trumpet, step_trumpet;
     Shower: elephant::shower::Shower => begin_shower, step_shower;
     MouseScare: elephant::mouse_scare::MouseScare => begin_mouse_scare, step_mouse_scare;
@@ -311,7 +306,6 @@ impl Sim {
         match self.character.rig() {
             Some(RigKind::Goose) => goose::NOTES,
             Some(RigKind::Pig) => pig::NOTES,
-            Some(RigKind::Dachshund) => dachshund::NOTES,
             Some(RigKind::Elephant) => elephant::NOTES,
             Some(RigKind::Raccoon) => raccoon::NOTES,
             Some(RigKind::Penguin) => penguin::NOTES,

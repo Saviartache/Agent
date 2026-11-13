@@ -33,7 +33,6 @@ const NECK_RAISED: f32 = 0.6;
 const NECK_KEEP: f32 = 0.9;
 const DANGLE_SWAY: f32 = 2.5;
 const DANGLE_HZ: f32 = 2.0;
-const WAG_HZ: f32 = 5.0;
 /// Тень слабеет вдвое на этой высоте, design px.
 const SHADOW_HALF: f32 = 10.0;
 /// Раздутое тело: прибавка к полуосям и провисание брюха, design px.
@@ -316,7 +315,6 @@ impl Creature {
             tail: self.tail.lag(),
             shadow: 1.0 / (1.0 + lift / SHADOW_HALF),
             tuck: m.tuck.clamp(0.0, 1.0),
-            wag: m.wag.clamp(0.0, 1.0) * cycle(self.clock, WAG_HZ),
             antic,
             look: self.look,
         };
