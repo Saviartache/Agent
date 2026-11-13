@@ -118,6 +118,10 @@ fn parts(pose: &Pose) -> Vec<(Vec3, f32)> {
     all.extend(pose.feet.map(|p| (p, thick)));
     all.extend(pose.fore.into_iter().flatten().map(|p| (p, thick)));
     all.extend(pose.trunk.into_iter().flatten().map(|p| (p, thick)));
+    all.extend(pose.ears.into_iter().flatten().map(|ear| {
+        let reach = ear.axes[0].length().max(ear.axes[1].length());
+        (ear.center, reach)
+    }));
     all
 }
 
@@ -717,6 +721,47 @@ fn elephant_trunk_hangs_rises_with_the_head_and_lies_on_the_ground() {
         lowered.z < 2.0 && (lowered.x - 32.0).abs() < 1.0,
         "{lowered:?}"
     );
+}
+
+#[test]
+fn only_the_elephant_has_ears_and_they_spread_when_flapping() {
+    for kind in RigKind::ALL {
+        let pose = Creature::new(kind, START, RIGHT, SCALE).pose().clone();
+        assert_eq!(pose.ears.is_some(), kind == RigKind::Elephant, "{kind:?}");
+    }
+    let out = |rig: &Rig| {
+        let pose = rig.goose.pose();
+        let right = pose.head_frame().right;
+        let [left, right_ear] = pose.ears.unwrap();
+        [
+            -(left.center - pose.head.center).dot(right),
+            (right_ear.center - pose.head.center).dot(right),
+        ]
+    };
+    let calm = out(&with_antic(
+        RigKind::Elephant,
+        Antic::default(),
+        Look::default(),
+    ));
+    let flapping = antic(|a| {
+        a.wings = 1.0;
+        a.flap = 0.25;
+    });
+    let spread = out(&with_antic(RigKind::Elephant, flapping, Look::default()));
+    for (calm, spread) in calm.into_iter().zip(spread) {
+        assert!(calm > 0.0 && spread > calm + 2.0, "{calm} {spread}");
+    }
+}
+
+#[test]
+fn elephant_ears_stay_above_the_ground_lying_down() {
+    for roll in [PI * 0.5, PI] {
+        let rig = with_antic(RigKind::Elephant, antic(|a| a.roll = roll), Look::default());
+        for ear in rig.goose.pose().ears.unwrap() {
+            let reach = ear.axes[0].z.hypot(ear.axes[1].z);
+            assert!(ear.center.z - reach > -1e-3, "{roll} {ear:?}");
+        }
+    }
 }
 
 #[test]

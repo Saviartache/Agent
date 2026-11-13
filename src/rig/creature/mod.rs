@@ -5,6 +5,7 @@
 mod antic;
 mod assemble;
 mod build;
+mod ear;
 mod feet;
 mod gesture;
 mod head;
@@ -15,10 +16,11 @@ mod tests;
 
 pub use self::antic::{Antic, Eyes, Look};
 use self::build::Pair;
+use self::ear::Flaps;
 use self::feet::{Feet, Stance};
 use self::gesture::{CLOCK_WRAP, Mods};
 use self::head::{HeadState, Spring, wrap_angle, yaw_of};
-pub use self::pose::{Body, GROUND_SQUASH, Head, NECK_POINTS, Pose, flatten};
+pub use self::pose::{Body, Ear, GROUND_SQUASH, Head, NECK_POINTS, Pose, flatten};
 use self::tail::Tail;
 use super::vec3::Vec3;
 use super::{Gesture, RigKind};
@@ -86,6 +88,7 @@ pub struct Creature {
     head: HeadState,
     /// Кончик хобота от его корня.
     trunk: Option<Spring>,
+    ears: Option<Flaps>,
     tail: Tail,
     antic: Antic,
     /// Накладка поворота, применённая к телу на прошлом кадре.
@@ -196,6 +199,7 @@ impl Creature {
                 .map(|pair| Feet::planted(&stance(pair), 1)),
             head: HeadState::resting(Vec3::ZERO, yaw),
             trunk: None,
+            ears: build.ears.as_ref().map(|ears| Flaps::resting(ears.open[0])),
             tail: Tail::default(),
             antic: Antic::default(),
             spin: 0.0,
@@ -241,7 +245,14 @@ impl Creature {
             fore.update(dt, &stance, footfalls);
         }
         let aim = self.aim(accel, heading_yaw, input.look_at, run);
+        let yaw = self.head.yaw();
         self.head.update(dt, &aim, rng);
+        let open = build.ears.as_ref().map(|shape| self.ear_open(shape));
+        let push = accel.dot(self.heading()) / self.scale;
+        if let (Some(ears), Some(open), true) = (&mut self.ears, open, dt > 0.0) {
+            let turn = wrap_angle(self.head.yaw() - yaw) / dt;
+            ears.update(dt, open, turn, push);
+        }
         let rest = self.trunk().map(|(_, rest)| rest);
         if let (Some(trunk), Some(rest), Some(shape)) = (&mut self.trunk, rest, &build.trunk) {
             trunk.update(dt, rest, accel, self.scale, shape.slack);

@@ -56,6 +56,18 @@ pub struct Head {
     pub eyes_open: f32,
 }
 
+/// Ухо-лопух: плоский эллипс на шарнире у затылка.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Ear {
+    /// Шарнир на голове.
+    pub root: Vec3,
+    pub center: Vec3,
+    /// Полуоси в плоскости уха: наружу от шарнира и вниз.
+    pub axes: [Vec3; 2],
+    /// Куда смотрит изнанка, единичный.
+    pub inner: Vec3,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Pose {
     pub kind: RigKind,
@@ -73,6 +85,8 @@ pub struct Pose {
     pub fore: Option<[Vec3; 2]>,
     /// Хобот слона: корень на морде и кончик.
     pub trunk: Option<[Vec3; 2]>,
+    /// Уши слона: левое и правое.
+    pub ears: Option<[Ear; 2]>,
     /// Отставание кончика хвоста по земле, px.
     pub tail: Vec2,
     /// Сила тени: 1 на земле, меньше в прыжке и в руках.
@@ -130,6 +144,14 @@ impl Pose {
         self.feet = self.feet.map(zoom);
         self.fore = self.fore.map(|feet| feet.map(zoom));
         self.trunk = self.trunk.map(|trunk| trunk.map(zoom));
+        self.ears = self.ears.map(|ears| {
+            ears.map(|ear| Ear {
+                root: zoom(ear.root),
+                center: zoom(ear.center),
+                axes: ear.axes.map(|a| a * k),
+                inner: ear.inner,
+            })
+        });
         self.tail = self.tail * k;
     }
 }

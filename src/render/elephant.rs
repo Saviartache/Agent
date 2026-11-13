@@ -1,8 +1,8 @@
 //! Слонёнок: серо-голубое пухлое тело с головой одним силуэтом, ноги-тумбы,
 //! уши-лопухи, гибкий хобот и два глаза со зрачком в камеру. Детали головы ложатся
-//! за неё или поверх, как у свинки; в каждом слое порядок один: уши, хобот, глаза.
+//! за неё или поверх и идут по глубине к зрителю.
 
-use std::f32::consts::TAU;
+mod ears;
 
 use super::creature::{
     INK, MOUTH, OUTLINE, OUTLINE_WIDTH, Pen, TONGUE, WHITE, cross, faces_viewer, toward_viewer,
@@ -10,13 +10,11 @@ use super::creature::{
 };
 use super::{Canvas, Color};
 use crate::math::Vec2;
-use crate::rig::{Eyes, Frame, NECK_POINTS, Vec3};
+use crate::rig::{Ear, Eyes, Frame, NECK_POINTS, Vec3};
 
 const HIDE: Color = Color(0x93_A8_C2);
 /// Уши и хвост.
 const EAR: Color = Color(0x7F_95_B1);
-/// Изнанка уха: видна, когда слонёнок смотрит на зрителя.
-const INNER: Color = Color(0xE0_A4_B0);
 const LEG: Color = Color(0x71_87_A3);
 const TOENAIL: Color = Color(0xC2_CF_DE);
 const TUFT: Color = Color(0x5B_6F_8C);
@@ -39,19 +37,6 @@ const TAIL: [[f32; 2]; 2] = [[0.95, 0.35], [1.2, -0.25]];
 const TAIL_RADIUS: f32 = 1.1;
 const TUFT_RADIUS: f32 = 1.7;
 const SIDES: [f32; 2] = [-1.0, 1.0];
-/// Ухо: вбок, вперёд, вверх — корень, кончик висящего и кончик расправленного.
-const EAR_ROOT: [f32; 3] = [0.75, -0.25, 0.3];
-const EAR_HANG: [f32; 3] = [1.0, -0.55, -0.45];
-const EAR_SPREAD: [f32; 3] = [1.5, 0.05, 0.2];
-const EAR_RADII: [f32; 2] = [4.4, 6.8];
-/// Изнанка уха: доля радиусов и отрезок от корня к кончику.
-const INNER_SIZE: f32 = 0.55;
-const INNER_SPAN: [f32; 2] = [0.25, 0.9];
-const INNER_FACING: f32 = 0.45;
-/// Уши хлопают: разница высот задних ступней и подъём тела, при которых расправлены целиком.
-const EAR_STRIDE: f32 = 7.0;
-const EAR_HOP: f32 = 6.0;
-const FLAP_BASE: f32 = 0.6;
 /// Хобот: точек от корня до кончика, радиусы и как далеко вперёд он выходит из морды
 /// в долях длины, прежде чем свернуть к кончику.
 const TRUNK_POINTS: usize = 9;
@@ -81,15 +66,41 @@ pub(super) fn draw(canvas: &mut Canvas, pen: &Pen) {
         frame: pen.pose.head_frame(),
     };
     elephant.legs(canvas, false);
-    elephant.details(canvas, false);
-    elephant.hide(canvas);
+    elephant.details(canvas, Layer::Back);
+    elephant.body(canvas);
+    elephant.details(canvas, Layer::Middle);
+    elephant.head(canvas);
     elephant.legs(canvas, true);
-    elephant.details(canvas, true);
+    elephant.details(canvas, Layer::Front);
 }
 
 struct Elephant<'a> {
     pen: &'a Pen<'a>,
     frame: Frame,
+}
+
+/// Слой детали: за телом, между телом и головой, поверх всего серого.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Layer {
+    Back,
+    Middle,
+    Front,
+}
+
+/// Деталь головы: её слой и насколько она ближе центра головы к зрителю, px.
+#[derive(Clone, Copy)]
+struct Part {
+    layer: Layer,
+    depth: f32,
+    kind: PartKind,
+}
+
+#[derive(Clone, Copy)]
+enum PartKind {
+    Ear(usize),
+    /// Хобот и рот.
+    Trunk,
+    Eyes,
 }
 
 impl Elephant<'_> {
@@ -104,8 +115,8 @@ impl Elephant<'_> {
         self.on_head(EYE_AT, side) * (1.0 - EYE_SINK * away)
     }
 
-    /// Всё серое одним цветом: швов между телом и головой нет.
-    fn hide(&self, canvas: &mut Canvas) {
+    /// Тело и шея; голова тем же цветом — швов нет.
+    fn body(&self, canvas: &mut Canvas) {
         let (pen, pose) = (self.pen, self.pen.pose);
         let body = pen.body();
         canvas.fill_ellipse(body.center, body.radii, body.rotation, HIDE, 1.0);
@@ -114,7 +125,31 @@ impl Elephant<'_> {
             let (a, b) = (pen.at(pose.neck[i - 1]), pen.at(pose.neck[i]));
             canvas.fill_capsule(a, b, radius, radius, HIDE, 1.0);
         }
-        canvas.fill_circle(pen.at(pose.head.center), pose.head.radius, HIDE, 1.0);
+    }
+
+    fn head(&self, canvas: &mut Canvas) {
+        let (pen, head) = (self.pen, &self.pen.pose.head);
+        canvas.fill_circle(pen.at(head.center), head.radius, HIDE, 1.0);
+    }
+
+    /// Точку закрывает тело: луч от неё к зрителю входит в эллипсоид.
+    fn behind_body(&self, at: Vec3) -> bool {
+        let body = &self.pen.pose.body;
+        let frame = body.frame();
+        let axes = [frame.forward, frame.right, frame.up];
+        let local = |v: [f32; 3]| {
+            Vec3::new(
+                v[0] / body.radii[0],
+                v[1] / body.radii[1],
+                v[2] / body.radii[2],
+            )
+        };
+        let p = local(axes.map(|axis| (at - body.center).dot(axis)));
+        let d = local(axes.map(toward_viewer));
+        // |p + t·d| = 1: дальний корень впереди точки
+        let (a, b, c) = (d.dot(d), p.dot(d), p.dot(p) - 1.0);
+        let disc = b * b - a * c;
+        disc >= 0.0 && disc.sqrt() >= b
     }
 
     /// Ноги по одну сторону от серого: `front` — те, что торчат к зрителю (на боку, на спине).
@@ -151,34 +186,82 @@ impl Elephant<'_> {
         }
     }
 
-    /// Детали по одну сторону от серого: `front` — те, что поверх него.
-    fn details(&self, canvas: &mut Canvas, front: bool) {
-        if (self.pen.pose.body.forward.y < 0.0) == front {
+    /// Детали слоя от дальней к ближней.
+    fn details(&self, canvas: &mut Canvas, layer: Layer) {
+        let tail_front = self.pen.pose.body.forward.y < 0.0;
+        if layer == [Layer::Back, Layer::Front][usize::from(tail_front)] {
             self.tail(canvas);
         }
-        let away = turned_away(self.frame.forward);
-        let eye_front = |side| !away && faces_viewer(self.eye_at(side));
-        for side in SIDES {
-            let ear_front = (away || eye_front(side)) && faces_viewer(self.on_head(EAR_ROOT, side));
-            if ear_front == front {
-                self.ear(canvas, side);
+        let mut parts = self.head_parts();
+        parts.sort_by(|a, b| a.depth.total_cmp(&b.depth));
+        for part in parts.into_iter().filter(|part| part.layer == layer) {
+            match part.kind {
+                PartKind::Ear(i) => {
+                    if let Some(ears) = &self.pen.pose.ears {
+                        ears::draw(canvas, self.pen, &ears[i]);
+                    }
+                }
+                PartKind::Trunk => {
+                    self.mouth(canvas);
+                    self.trunk(canvas);
+                }
+                PartKind::Eyes => {
+                    for side in SIDES.into_iter().filter(|side| self.eye_front(*side)) {
+                        self.eye(canvas, side);
+                    }
+                }
             }
         }
+    }
+
+    /// Ухо за головой, когда его шарнир дальше её центра, а за телом — когда тело его
+    /// закрывает; ближнее ложится поверх головы, но под морду, если она ближе. Морда —
+    /// хобот, рот и глаза одним слоем.
+    fn head_parts(&self) -> [Part; 4] {
+        let pose = self.pen.pose;
+        let depth = |at: Vec3| toward_viewer(at - pose.head.center);
+        let face = toward_viewer(self.on_head([0.0, EYE_AT[1], EYE_AT[2]], 1.0));
+        let ear = |i: usize| {
+            let ear = pose.ears.map_or_else(Ear::default, |ears| ears[i]);
+            let root = ear.root;
+            let layer = if depth(root) >= 0.0 {
+                Layer::Front
+            } else if self.behind_body(ear.center) {
+                Layer::Back
+            } else {
+                Layer::Middle
+            };
+            Part {
+                layer,
+                depth: depth(root),
+                kind: PartKind::Ear(i),
+            }
+        };
         // Хобот за головой, только когда морда отвернулась; кивок вниз его не прячет
-        let ahead = Vec3::on_ground(self.pen.pose.head.dir, 0.0);
-        if turned_away(ahead) != front {
-            self.mouth(canvas);
-            self.trunk(canvas);
-        }
-        // Глаз за головой не рисуется: из-за широкого лба он торчал бы бровью
-        if !front {
-            return;
-        }
-        for side in SIDES {
-            if eye_front(side) {
-                self.eye(canvas, side);
-            }
-        }
+        let ahead = !turned_away(Vec3::on_ground(pose.head.dir, 0.0));
+        let trunk = match pose.trunk {
+            Some([root, _]) if !ahead => depth(root),
+            _ => face,
+        };
+        [
+            ear(0),
+            ear(1),
+            Part {
+                layer: if ahead { Layer::Front } else { Layer::Back },
+                depth: trunk,
+                kind: PartKind::Trunk,
+            },
+            // Глаз за головой не рисуется: из-за широкого лба он торчал бы бровью
+            Part {
+                layer: Layer::Front,
+                depth: face,
+                kind: PartKind::Eyes,
+            },
+        ]
+    }
+
+    fn eye_front(&self, side: f32) -> bool {
+        !turned_away(self.frame.forward) && faces_viewer(self.eye_at(side))
     }
 
     fn tail(&self, canvas: &mut Canvas) {
@@ -190,35 +273,6 @@ impl Elephant<'_> {
         let s = pen.pose.scale;
         canvas.fill_capsule(root, tip, TAIL_RADIUS * s, TAIL_RADIUS * s, EAR, 1.0);
         canvas.fill_circle(tip, TUFT_RADIUS * s, TUFT, 1.0);
-    }
-
-    /// Насколько уши расправлены: на бегу хлопают в такт шагу, в прыжке от радости
-    /// и по сценке (`Antic::wings`, взмах — `flap`).
-    fn spread(&self) -> f32 {
-        let (pose, s) = (self.pen.pose, self.pen.pose.scale);
-        let stride = (pose.feet[0].z - pose.feet[1].z).abs() / (EAR_STRIDE * s);
-        let hop = pose.rise() / (EAR_HOP * s);
-        let antic = &pose.antic;
-        let flap = antic.wings * (FLAP_BASE + (1.0 - FLAP_BASE) * (TAU * antic.flap).sin());
-        stride.max(hop).max(flap).clamp(0.0, 1.0)
-    }
-
-    fn ear(&self, canvas: &mut Canvas, side: f32) {
-        let (pen, s) = (self.pen, self.pen.pose.scale);
-        let spread = self.spread();
-        let tip: [f32; 3] =
-            std::array::from_fn(|i| EAR_HANG[i] + (EAR_SPREAD[i] - EAR_HANG[i]) * spread);
-        let root = pen.on_head(self.on_head(EAR_ROOT, side));
-        let tip = pen.on_head(self.on_head(tip, side));
-        canvas.fill_capsule(root, tip, EAR_RADII[0] * s, EAR_RADII[1] * s, EAR, 1.0);
-        // По взгляду на земле: задранная голова изнанку не показывает
-        let ahead = Vec3::on_ground(self.pen.pose.head.dir, 0.0);
-        if toward_viewer(ahead) < INNER_FACING {
-            return;
-        }
-        let [a, b] = INNER_SPAN.map(|t| root.lerp(tip, t));
-        let [ra, rb] = EAR_RADII.map(|r| r * INNER_SIZE * s);
-        canvas.fill_capsule(a, b, ra, rb, INNER, 1.0);
     }
 
     /// Хобот выходит из морды вперёд и гнётся к кончику, который живёт на пружине.
@@ -291,9 +345,10 @@ impl Elephant<'_> {
 mod tests {
     use super::*;
     use crate::render::creature::test_support::{
-        self, HEADINGS, opaque, outside_rect, render, solid,
+        self, HEADINGS, MARGIN, SCALE, opaque, outside_rect, render, solid,
     };
-    use crate::rig::{Pose, RigKind};
+    use crate::rig::{Antic, Creature, Gesture, Pose, RigInput, RigKind};
+    use crate::rng::Rng;
 
     const TOWARD: Vec2 = Vec2::new(0.0, 1.0);
     const AWAY: Vec2 = Vec2::new(0.0, -1.0);
@@ -337,15 +392,110 @@ mod tests {
 
     #[test]
     fn ears_spread_wider_when_flapping() {
-        let mut elephant = pose(TOWARD);
-        let (calm, ..) = render(&elephant);
-        elephant.antic.wings = 1.0;
-        elephant.antic.flap = 0.25;
-        let (flapping, ..) = render(&elephant);
-        assert!(solid(&flapping, EAR) > solid(&calm, EAR));
-        assert!(solid(&calm, INNER) > 0, "изнанка видна спереди");
+        let flapping = Antic {
+            wings: 1.0,
+            flap: 0.25,
+            ..Antic::default()
+        };
+        for heading in [TOWARD, AWAY] {
+            let (calm, ..) = render(&posed(heading, Antic::default()));
+            let (spread, ..) = render(&posed(heading, flapping));
+            assert!(solid(&spread, EAR) > solid(&calm, EAR) + 50, "{heading:?}");
+        }
+    }
+
+    /// Слои ушей, левого и правого.
+    fn ear_layers(pose: &Pose) -> [Layer; 2] {
+        let pen = Pen {
+            origin: Vec2::ZERO,
+            pose,
+        };
+        let elephant = Elephant {
+            pen: &pen,
+            frame: pose.head_frame(),
+        };
+        let parts = elephant.head_parts();
+        [parts[0].layer, parts[1].layer]
+    }
+
+    #[test]
+    fn ears_go_behind_the_head_from_the_front_and_over_it_from_behind() {
+        assert!(ear_layers(&pose(TOWARD)).iter().all(|l| *l != Layer::Front));
+        assert_eq!(ear_layers(&pose(AWAY)), [Layer::Front; 2]);
+        // В профиль ближнее ухо — правое по ходу вправо
+        let [far, near] = ear_layers(&pose(RIGHT));
+        assert_eq!(near, Layer::Front);
+        assert_ne!(far, Layer::Front);
+        let [near, far] = ear_layers(&pose(Vec2::new(-1.0, 0.0)));
+        assert_eq!(near, Layer::Front);
+        assert_ne!(far, Layer::Front);
+        // Вполоборота ближнее ухо поверх головы, но под мордой
+        let elephant = pose(Vec2::new(0.7, 0.7));
+        let pen = Pen {
+            origin: Vec2::ZERO,
+            pose: &elephant,
+        };
+        let parts = Elephant {
+            pen: &pen,
+            frame: elephant.head_frame(),
+        }
+        .head_parts();
+        let (near, eyes) = (parts[1], parts[3]);
+        assert_eq!(near.layer, Layer::Front);
+        assert!(near.depth < eyes.depth);
+    }
+
+    #[test]
+    fn from_the_front_both_ears_stick_out_beside_the_head() {
+        let elephant = pose(TOWARD);
+        let (pixels, w, _) = render(&elephant);
+        let rect = super::super::creature::rect(&elephant, Creature::extent(SCALE));
+        let origin = Vec2::new(rect.x as f32, rect.y as f32) - Vec2::new(1.0, 1.0) * MARGIN as f32;
+        let center = elephant.screen(elephant.head.center) - origin;
+        let radius = elephant.head.radius;
+        let ear = 0xFF00_0000 | EAR.0;
+        let beside = |out: f32| {
+            (0..pixels.len())
+                .filter(|i| pixels[*i] == ear)
+                .filter(|i| ((*i % w) as f32 - center.x) * out > radius)
+                .count()
+        };
+        assert!(
+            beside(-1.0) > 30 && beside(1.0) > 30,
+            "{} {}",
+            beside(-1.0),
+            beside(1.0)
+        );
+    }
+
+    #[test]
+    fn inner_side_shows_only_when_it_faces_the_viewer() {
+        let (front, ..) = render(&pose(TOWARD));
         let (back, ..) = render(&pose(AWAY));
-        assert_eq!(solid(&back, INNER), 0);
+        assert_eq!(near(&front, ears::INNER), 0);
+        assert!(near(&back, ears::INNER) > 20);
+    }
+
+    /// Слоник секунду в накладке, взгляд прямо по ходу.
+    fn posed(heading: Vec2, antic: Antic) -> Pose {
+        let at = test_support::AT;
+        let mut rig = Creature::new(RigKind::Elephant, at, heading, SCALE);
+        let input = RigInput {
+            pos: at,
+            vel: Vec2::ZERO,
+            heading,
+            look_at: Some(at + heading * 1000.0),
+            gesture: Gesture::Idle,
+            progress: 0.0,
+            scale: SCALE,
+            grounded: true,
+            antic,
+        };
+        let mut rng = Rng::new(7);
+        for _ in 0..60 {
+            rig.update(1.0 / 60.0, &input, &mut rng, &mut Vec::new());
+        }
+        rig.pose().clone()
     }
 
     /// Пиксели, близкие к цвету: мелкие детали мозаика не оставляет чистыми.
