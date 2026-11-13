@@ -4,6 +4,7 @@
 use std::f32::consts::{PI, TAU};
 
 use super::super::Progress;
+use super::crumbs::PECK_REACH;
 use crate::behavior::Directive;
 use crate::effects::particles::Burst;
 use crate::effects::props::{PropId, PropKind};
@@ -19,8 +20,10 @@ const HEAP_RADIUS: f32 = 9.0;
 const HEAP_LEAVES: usize = 10;
 /// Листья тают сами.
 const LEAVES_TTL: f32 = 20.0;
-/// Гусь подошёл к точке кольца на столько design px — сгребает.
-const REACH: f32 = 14.0;
+/// Гусь встал на столько логических px от места, откуда клюв достаёт кучку, — сгребает.
+const REACH_SLACK: f32 = 9.0;
+/// Дошёл до середины на столько design px — садится.
+const CENTER_SLACK: f32 = 7.0;
 const RAKE_SECS: f32 = 0.5;
 const SIT_SECS: f32 = 2.5;
 const EGG_TTL: f32 = 10.0;
@@ -36,8 +39,10 @@ enum Phase {
         i: usize,
         left: f32,
     },
+    /// Сгребает кучку `i`, глядя на неё.
     Rake {
         i: usize,
+        face: Vec2,
         t: f32,
     },
     /// Идёт в середину.
@@ -80,8 +85,6 @@ impl Sim {
                 from.distance(a).total_cmp(&from.distance(b))
             })
             .unwrap_or(0);
-        self.brain
-            .push(Directive::MoveTo(self.ring_point(center, first)));
         Some(Nest {
             center,
             first,
@@ -96,23 +99,25 @@ impl Sim {
         let phase = match act.phase {
             Phase::Walk { i, left } => {
                 let at = self.ring_point(act.center, act.first + i);
-                if self.body.pos.distance(at) <= REACH * self.sprite {
+                let (face, spot) = self.reach_for(at, PECK_REACH);
+                if self.body.pos.distance(spot) <= REACH_SLACK * self.ui {
                     self.halt();
-                    Phase::Rake { i, t: 0.0 }
+                    Phase::Rake { i, face, t: 0.0 }
                 } else if left <= dt {
                     return Progress::Dropped;
                 } else {
+                    // Место сдвигается, пока гусь заходит к кучке
+                    self.brain.push(Directive::MoveTo(spot));
                     Phase::Walk { i, left: left - dt }
                 }
             }
-            Phase::Rake { i, t } => {
+            Phase::Rake { i, face, t } => {
                 let t = t + dt;
+                self.body.heading = face;
                 self.peck_pose((t / RAKE_SECS * PI).sin());
                 if t < RAKE_SECS {
-                    Phase::Rake { i, t }
+                    Phase::Rake { i, face, t }
                 } else if i + 1 < HEAPS {
-                    let next = self.ring_point(act.center, act.first + i + 1);
-                    self.brain.push(Directive::MoveTo(next));
                     Phase::Walk {
                         i: i + 1,
                         left: STEP_SECS,
@@ -123,7 +128,7 @@ impl Sim {
                 }
             }
             Phase::Enter(left) => {
-                if self.body.pos.distance(act.center) <= REACH * 0.5 * self.sprite {
+                if self.body.pos.distance(act.center) <= CENTER_SLACK * self.sprite {
                     self.halt();
                     Phase::Sit(0.0)
                 } else if left <= dt {

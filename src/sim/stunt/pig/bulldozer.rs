@@ -3,20 +3,19 @@
 use std::f32::consts::TAU;
 
 use super::super::Progress;
+use super::snack::SNOUT_REACH;
 use crate::behavior::Directive;
 use crate::effects::particles::Burst;
 use crate::effects::props::{PropId, PropKind};
 use crate::math::Vec2;
+use crate::rig::GROUND_SQUASH;
 use crate::sim::Sim;
 
 /// Расстояния — логические px (design px — у тела), время — с.
-const ACORN_DISTANCE: f32 = 80.0;
 const PUSH_DISTANCE: [f32; 2] = [400.0, 600.0];
 const SPOT_TRIES: usize = 8;
-/// Жёлудь держится перед носом на таком расстоянии от тела, design px.
-const SNOUT: f32 = 34.0;
 /// Жёлудь у пятачка, design px.
-const GRIP: f32 = 22.0;
+const GRIP: f32 = 16.0;
 /// Жёлудь едет чуть быстрее свинки, но пружина держит его у носа.
 const PUSH_SPEED: f32 = 1.1;
 const PUSH_SPRING: f32 = 4.0;
@@ -45,19 +44,25 @@ pub(in crate::sim) struct Bulldozer {
 impl Sim {
     pub(in crate::sim::stunt) fn begin_bulldozer(&mut self) -> Option<Bulldozer> {
         let area = self.bounds.nearest(self.body.pos);
-        let margin = self.edge_margin() + SNOUT * self.sprite;
-        let (dir, acorn_at, goal) = (0..SPOT_TRIES).find_map(|_| {
-            let dir = Vec2::from_angle(self.rng.range(0.0, TAU));
-            let at = self.body.pos + dir * (ACORN_DISTANCE * self.ui);
+        let margin = self.edge_margin() + SNOUT_REACH * self.sprite;
+        // Сперва — куда уже смотрит
+        let (dir, goal) = (0..SPOT_TRIES).find_map(|i| {
+            let dir = if i == 0 {
+                self.body.heading.normalized()
+            } else {
+                Vec2::from_angle(self.rng.range(0.0, TAU))
+            };
+            let at = self.snout(dir);
             let goal = at + dir * (self.rng.range(PUSH_DISTANCE[0], PUSH_DISTANCE[1]) * self.ui);
-            (area.clamp(goal, margin) == goal && area.clamp(at, margin) == at)
-                .then_some((dir, at, goal))
+            (area.clamp(goal, margin) == goal).then_some((dir, goal))
         })?;
+        // Жёлудь сразу у пятачка: свинка поворачивается и толкает
+        self.body.heading = dir;
         let acorn = self
             .props
-            .spawn(PropKind::Acorn, acorn_at, 0.0, self.ui, ACORN_TTL);
+            .spawn(PropKind::Acorn, self.snout(dir), 0.0, self.ui, ACORN_TTL);
         self.brain
-            .push(Directive::MoveTo(goal - dir * (SNOUT * self.sprite)));
+            .push(Directive::MoveTo(goal - (self.snout(dir) - self.body.pos)));
         Some(Bulldozer {
             acorn,
             goal,
@@ -95,10 +100,8 @@ impl Sim {
                     self.props.remove(act.acorn);
                     return Progress::Dropped;
                 }
-                self.antic.neck_forward = 5.0;
-                self.antic.neck_up = -5.0;
-                self.antic.head_pitch = -0.6;
-                let snout = self.body.pos + act.dir * (SNOUT * self.sprite);
+                self.snout_down(1.0);
+                let snout = self.snout(act.dir);
                 if acorn.pos.distance(snout) <= GRIP * self.sprite
                     && let Some(acorn) = self.props.get_mut(act.acorn)
                 {
@@ -120,5 +123,11 @@ impl Sim {
             Phase::Cheer(_) => return Progress::Finished,
         };
         Progress::Going(act)
+    }
+
+    /// Где лежит жёлудь перед опущенным пятачком, когда свинка идёт по `dir`.
+    fn snout(&self, dir: Vec2) -> Vec2 {
+        let ahead = Vec2::new(dir.x, dir.y * GROUND_SQUASH);
+        self.body.pos + ahead * (SNOUT_REACH * self.sprite + PropKind::Acorn.radius() * self.ui)
     }
 }

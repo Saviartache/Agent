@@ -420,19 +420,21 @@ mod tests {
         (Footprints::new(1, 1.0, 1.0), Leaves::new(1), Mud::new(1))
     }
 
-    /// Пиксели слоя и число закрашенных за пределами охвата эффектов.
+    /// Пиксели слоя и число закрашенных за пределами охвата эффектов с любой стороны.
     fn paint(props: &Props, particles: &Particles, ui: f32) -> (Vec<u32>, usize) {
+        const PAD: i32 = 60;
         let parts = parts();
         let all = effects(props, particles, &parts);
         let rect = enclosing(effects_rect(&all, ui).unwrap());
         let mut pixels = vec![0u32; SIDE * SIDE];
         let mut canvas = Canvas::new(&mut pixels, SIDE, SIDE as u32, SIDE as u32).unwrap();
-        let from = Vec2::new(rect.x as f32, rect.y as f32);
+        let from = Vec2::new((rect.x - PAD) as f32, (rect.y - PAD) as f32);
         draw_effects(&mut canvas, from, &all, ui);
+        let inside = |v: i32, len: u32| (PAD..PAD + len as i32).contains(&v);
         let leaked = (0..SIDE * SIDE)
             .filter(|i| {
                 let (x, y) = ((i % SIDE) as i32, (i / SIDE) as i32);
-                pixels[*i] >> 24 != 0 && (x >= rect.width as i32 || y >= rect.height as i32)
+                pixels[*i] >> 24 != 0 && !(inside(x, rect.width) && inside(y, rect.height))
             })
             .count();
         (pixels, leaked)

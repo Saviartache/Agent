@@ -38,6 +38,16 @@ pub enum PropKind {
 }
 
 impl PropKind {
+    /// Что рисунок занимает над опорой сверх обычного: высота центра и радиус круга,
+    /// в радиусах. Мяч стоит на земле, мухи вьются над кучкой.
+    fn crown(self) -> (f32, f32) {
+        match self {
+            Self::Ball => (0.9, 1.5),
+            Self::Pile => (2.3, 2.6),
+            _ => (0.7, 1.5),
+        }
+    }
+
     /// Радиус, логические px.
     pub fn radius(self) -> f32 {
         match self {
@@ -190,7 +200,15 @@ impl Props {
     pub fn bounds(&self) -> Option<Rect> {
         bounding(self.live.iter().flat_map(|prop| {
             let lifted = prop.pos - Vec2::new(0.0, prop.z);
-            [(prop.pos, prop.radius * 1.5), (lifted, prop.radius * 1.5)]
+            let (rise, reach) = prop.kind.crown();
+            [
+                (prop.pos, prop.radius * 1.5),
+                (lifted, prop.radius * 1.5),
+                (
+                    lifted - Vec2::new(0.0, prop.radius * rise),
+                    prop.radius * reach,
+                ),
+            ]
         }))
     }
 
@@ -221,6 +239,11 @@ fn fly(prop: &mut Prop, dt: f32, gravity: f32, ui: f32) {
         };
         prop.vel = prop.vel * (-prop.kind.friction() * dt).exp();
         prop.spin *= (-prop.kind.friction() * dt).exp();
+        if prop.kind == PropKind::Ball {
+            // Катится без проскальзывания
+            let way = if prop.vel.x < 0.0 { -1.0 } else { 1.0 };
+            prop.spin = way * prop.vel.length() / prop.radius;
+        }
     }
     prop.pos += prop.vel * dt;
     prop.angle += prop.spin * dt;
@@ -277,6 +300,18 @@ mod tests {
         assert!(ball.vel.x < 0.0 && ball.pos.x <= 800.0 - ball.radius);
         run(&mut props, 12.0);
         assert!(props.get(id).unwrap().resting());
+    }
+
+    #[test]
+    fn rolling_ball_turns_with_its_travel() {
+        let mut props = Props::new(4);
+        let id = props.spawn(PropKind::Ball, Vec2::new(100.0, 300.0), 0.0, 1.0, 60.0);
+        props.get_mut(id).unwrap().vel = Vec2::new(-200.0, 0.0);
+        run(&mut props, 0.2);
+        let ball = props.get(id).unwrap();
+        let rolled = 100.0 - ball.pos.x;
+        assert!(ball.angle < 0.0, "{}", ball.angle);
+        assert!((-ball.angle * ball.radius - rolled).abs() < rolled * 0.1);
     }
 
     #[test]

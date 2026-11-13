@@ -5,7 +5,8 @@ mod creature;
 mod vec3;
 
 pub use creature::{
-    Antic, Body, Creature, Eyes, Footfall, Head, Look, NECK_POINTS, Pose, RigInput, flatten,
+    Antic, Body, Creature, Eyes, Footfall, GROUND_SQUASH, Head, Look, NECK_POINTS, Pose, RigInput,
+    flatten,
 };
 pub use vec3::{Frame, Vec3};
 

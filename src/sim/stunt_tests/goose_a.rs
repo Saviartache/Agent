@@ -49,16 +49,15 @@ fn goose_a_rings(world: &World) -> bool {
 #[test]
 fn goose_a_wall_slam_hits_the_edge_and_loses_feathers() {
     let mut world = goose_a_world(3);
-    let (mut bumped, mut feathers, mut bald, mut dazed) = (false, 0, 0.0_f32, 0.0_f32);
+    let (mut bumped, mut feathers, mut dazed) = (false, 0, 0.0_f32);
     let done = goose_a_play(&mut world, Stunt::WallSlam, 16.0, |w| {
         bumped |= w.sim.bumped.is_some();
         feathers = feathers.max(goose_a_feathers(w));
-        bald = bald.max(w.sim.cond.bald);
         dazed = dazed.max(w.sim.cond.dazed);
     });
     assert!(done && bumped);
     assert!(feathers >= 2, "{feathers}");
-    assert!(bald > 0.99 && dazed > 0.99, "{bald} {dazed}");
+    assert!(dazed > 0.99, "{dazed}");
 }
 
 #[test]
@@ -181,21 +180,13 @@ fn goose_a_flight_has_all_three_outcomes() {
 }
 
 #[test]
-fn goose_a_preen_drops_feathers_and_sometimes_overdoes_it() {
-    let (mut bald, mut tidy) = (0, 0);
-    for seed in 0..40 {
+fn goose_a_preen_drops_feathers() {
+    for seed in 0..10 {
         let mut world = goose_a_world(seed);
-        let (mut feathers, mut overdone) = (0, false);
+        let mut feathers = 0;
         let done = goose_a_play(&mut world, Stunt::Preen, 12.0, |w| {
             feathers = feathers.max(goose_a_feathers(w));
-            overdone |= w.sim.cond.bald > 0.0;
         });
         assert!(done && feathers >= 1, "{seed}");
-        if overdone {
-            bald += 1;
-        } else {
-            tidy += 1;
-        }
     }
-    assert!(bald > 0 && tidy > bald, "{bald}/{tidy}");
 }

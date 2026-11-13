@@ -1,5 +1,5 @@
 //! Удар о край: гусь замечает край, разгоняется и не тормозит; врезается, летят перья,
-//! сползает по краю, оглушён, потом разглядывает проплешину.
+//! сползает по краю, оглушён, потом оглядывает бок.
 
 use super::super::Progress;
 use crate::behavior::Directive;
@@ -28,7 +28,6 @@ const REBOUND_SPEED: f32 = 150.0;
 const REBOUND_FRICTION: f32 = 5.0;
 const SQUASH: Vec2 = Vec2::new(0.7, 1.15);
 const SLIDE_CROUCH: f32 = 0.8;
-const FEATHER_HEIGHT: f32 = 30.0;
 const FEATHER_TTL: f32 = 6.0;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -147,7 +146,7 @@ impl Sim {
         Progress::Dropped
     }
 
-    /// Удар: перья, звёзды, оглушён и лысина.
+    /// Удар: перья, звёзды, оглушён.
     fn slam(&mut self, away: Vec2) {
         self.drive = Some(Drive::new(Vec2::ZERO));
         self.halt();
@@ -157,18 +156,17 @@ impl Sim {
         }
         self.burst(Burst::Stars, head);
         for _ in 0..2 + self.pick(2) {
-            self.shed_feather(head, away);
+            self.shed_feather(away);
         }
         self.cond.dazed = 1.0;
-        self.cond.bald = 1.0;
     }
 
-    /// Перо слетает с `at` в сторону `away` и плавно оседает.
-    pub(in crate::sim::stunt) fn shed_feather(&mut self, at: Vec2, away: Vec2) {
-        let ui = self.ui;
+    /// Перо слетает с клюва в сторону `away` и плавно оседает.
+    pub(in crate::sim::stunt) fn shed_feather(&mut self, away: Vec2) {
+        let (ui, at, height) = (self.ui, self.muzzle_ground(), self.muzzle_height());
         let id = self
             .props
-            .spawn(PropKind::Feather, at, FEATHER_HEIGHT * ui, ui, FEATHER_TTL);
+            .spawn(PropKind::Feather, at, height, ui, FEATHER_TTL);
         let speed = self.rng.range(30.0, 90.0) * ui;
         let (lift, drift, spin) = (
             self.rng.range(60.0, 160.0) * ui,

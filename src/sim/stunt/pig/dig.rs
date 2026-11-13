@@ -81,10 +81,9 @@ impl Sim {
 
     fn dig(&mut self, act: &mut Dig, left: f32, dt: f32) -> Phase {
         let spent = DIG_SECS - left;
-        self.antic.pitch = -0.6;
-        self.antic.neck_up = -6.0;
-        self.antic.head_pitch = -0.9;
-        self.antic.neck_forward = 5.0 + 1.5 * (TAU * DIG_HZ * spent).sin();
+        // Пятачок в землю и ходит в ней
+        self.antic.pitch = -0.3;
+        self.snout_down(0.9 + 0.1 * (TAU * DIG_HZ * spent).sin());
         self.cond.snout = SNOUT;
         act.dirt_in -= dt;
         if act.dirt_in <= 0.0 {

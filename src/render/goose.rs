@@ -11,13 +11,7 @@ use crate::math::Vec2;
 use crate::rig::{Eyes, Frame, NECK_POINTS, Vec3};
 
 const ORANGE: Color = Color(0xFF_9A_1F);
-/// Кожа проплешины.
-const SKIN: Color = Color(0xF4_B6_B0);
 
-/// Проплешина: радиус по `bald`, design px.
-const BALD_RADIUS: [f32; 2] = [1.5, 3.5];
-/// Центр проплешины в долях полуосей тела: назад, вбок, вверх.
-const BALD_AT: [f32; 3] = [-0.15, 0.6, 0.4];
 /// Раскрытый клюв: угол половинки при `mouth = 1`, рад; радиусы половинки.
 const GAPE: f32 = 0.5;
 const HALF_RADII: [f32; 2] = [1.8, 0.9];
@@ -88,9 +82,6 @@ impl Goose<'_> {
         let body = pen.body();
         let radii = body.radii + Vec2::new(grow, grow);
         canvas.fill_ellipse(body.center, radii, body.rotation, color, 1.0);
-        if grow == 0.0 {
-            self.bald(canvas);
-        }
         let radius = NECK_RADIUS * s + grow;
         for i in 1..NECK_POINTS {
             let (a, b) = (pen.at(pose.neck[i - 1]), pen.at(pose.neck[i]));
@@ -116,31 +107,6 @@ impl Goose<'_> {
         for foot in pose.feet {
             canvas.fill_circle(self.0.at(foot), radius, ORANGE, 1.0);
         }
-    }
-
-    /// Проплешина на боку, обращённом к зрителю.
-    fn bald(&self, canvas: &mut Canvas) {
-        let (pen, pose) = (self.0, self.0.pose);
-        let bald = pose.look.bald;
-        if bald <= 0.0 {
-            return;
-        }
-        let body = &pose.body;
-        let frame = Frame::new(body.forward.y.atan2(body.forward.x), body.pitch, 0.0);
-        let side = if toward_viewer(frame.right) >= 0.0 {
-            1.0
-        } else {
-            -1.0
-        };
-        let [along, out, up] = BALD_AT;
-        let at = frame.point(
-            body.center,
-            along * body.radii[0],
-            side * out * body.radii[1],
-            up * body.radii[2],
-        );
-        let r = (BALD_RADIUS[0] + BALD_RADIUS[1] * bald) * pose.scale;
-        canvas.fill_ellipse(pen.at(at), Vec2::new(r, r * 0.8), 0.0, SKIN, 1.0);
     }
 
     /// Петля на шее: кольцо из капсул сбоку от неё, у середины.
@@ -378,7 +344,7 @@ mod tests {
     }
 
     #[test]
-    fn mouth_tongue_bald_and_mud_show() {
+    fn mouth_tongue_and_mud_show() {
         let mut goose = front();
         let (plain, ..) = render(&goose);
         goose.antic.mouth = 1.0;
@@ -387,14 +353,10 @@ mod tests {
         goose.antic.tongue = true;
         let (tongue, ..) = render(&goose);
         assert!(solid(&tongue, TONGUE) > 0);
-        assert_eq!((solid(&plain, SKIN), solid(&plain, MUD)), (0, 0));
-        goose.look.bald = 0.2;
+        assert_eq!(solid(&plain, MUD), 0);
         goose.look.snout = 1.0;
         let (marked, ..) = render(&goose);
-        assert!(solid(&marked, SKIN) > 0 && solid(&marked, MUD) > 0);
-        goose.look.bald = 1.0;
-        let (bare, ..) = render(&goose);
-        assert!(solid(&bare, SKIN) > solid(&marked, SKIN));
+        assert!(solid(&marked, MUD) > 0);
     }
 
     #[test]

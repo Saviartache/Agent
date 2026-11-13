@@ -4,6 +4,7 @@
 use std::f32::consts::TAU;
 
 use super::super::Progress;
+use super::crumbs::PECK_REACH;
 use crate::behavior::Directive;
 use crate::math::Vec2;
 use crate::sim::Sim;
@@ -21,6 +22,8 @@ const LEAD: f32 = 10.0;
 /// Метки на земле ложатся не чаще этого шага.
 const STAMP_GAP: f32 = 2.5;
 const TIMEOUT_SECS: f32 = 20.0;
+/// Клюв касается земли, когда ниже этого, design px.
+const TOUCH: f32 = 2.0;
 
 #[derive(Clone, Copy, Debug)]
 enum Shape {
@@ -68,7 +71,6 @@ impl Sim {
                 center + Vec2::new(p.x, p.y * GROUND_SQUASH)
             })
             .collect();
-        self.brain.push(Directive::MoveTo(path[0]));
         Some(Scribble {
             path,
             approach: true,
@@ -88,40 +90,33 @@ impl Sim {
             self.halt();
             return Progress::Dropped;
         }
-        self.antic.neck_up = -8.0;
-        self.antic.head_pitch = -0.7;
-        self.antic.neck_forward = 6.0;
-        let beak = self.beak_ground();
+        // Тело идёт так, чтобы клюв приходился на точку узора
+        let (face, spot) = self.reach_for(act.path[act.next], PECK_REACH);
+        self.brain.push(Directive::MoveTo(spot));
+        let there = self.body.pos.distance(spot) <= LEAD * self.ui;
         if act.approach {
-            if self.body.pos.distance(act.path[0]) <= LEAD * self.ui {
-                act.approach = false;
-                act.next = 1;
-                self.brain.push(Directive::MoveTo(act.path[1]));
-            }
+            act.approach = !there;
+            return Progress::Going(act);
+        }
+        self.body.heading = face;
+        self.peck_pose(1.0);
+        let beak = self.muzzle_ground();
+        // Чертит только клюв, коснувшийся земли
+        if self.muzzle_height() > TOUCH * self.sprite {
             return Progress::Going(act);
         }
         act.last = Some(match act.last {
             Some(from) => self.stamp_between(from, beak),
             None => beak,
         });
-        if self.body.pos.distance(act.path[act.next]) <= LEAD * self.ui {
+        if there || beak.distance(act.path[act.next]) <= LEAD * self.ui {
             act.next += 1;
-            let Some(&to) = act.path.get(act.next) else {
+            if act.next >= act.path.len() {
                 self.halt();
                 return Progress::Finished;
-            };
-            self.brain.push(Directive::MoveTo(to));
+            }
         }
         Progress::Going(act)
-    }
-
-    /// Точка на земле под кончиком клюва.
-    fn beak_ground(&self) -> Vec2 {
-        let lift = self
-            .rig
-            .as_ref()
-            .map_or(0.0, |rig| rig.pose().muzzle_tip().z);
-        self.head() + Vec2::new(0.0, lift)
     }
 
     /// Метки по отрезку клюва: линия сплошная, даже когда клюв идёт быстро.

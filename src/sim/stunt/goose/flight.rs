@@ -216,7 +216,7 @@ impl Sim {
         self.burst(Burst::Feather, head);
         self.burst(Burst::Stars, head);
         for _ in 0..2 {
-            self.shed_feather(head, Vec2::new(-act.side, 0.0));
+            self.shed_feather(Vec2::new(-act.side, 0.0));
         }
         self.cond.dazed = HIT_DAZE;
         enter(act, Phase::Fall);

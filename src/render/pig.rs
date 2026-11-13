@@ -123,7 +123,8 @@ impl Pig<'_> {
     fn legs(&self, canvas: &mut Canvas, front: bool) {
         let (pen, pose, body) = (self.pen, self.pen.pose, &self.pen.pose.body);
         let out = 1.0 - pose.tuck;
-        let k = pose.scale * out;
+        // Поджатая наполовину нога короче, но не тоньше: тает только под телом
+        let k = pose.scale * (2.0 * out).min(1.0);
         let frame = body.frame();
         let forward = frame.forward * (body.radii[0] * HIP[0]);
         let right = frame.right * (body.radii[1] * HIP[1]);

@@ -11,6 +11,8 @@ const SIDE_SECS: f32 = 0.4;
 const BACK_SECS: f32 = 0.4;
 const KICK_UNTIL: f32 = 4.0;
 const KICK_HZ: f32 = 5.0;
+/// Дрыгая, поджимает ножки не больше чем наполовину: они не пропадают.
+const KICK_TUCK: f32 = 0.5;
 const WOBBLE: f32 = 2.0;
 const LIDS: f32 = 0.5;
 const HEARTS_AT: f32 = 1.2;
@@ -53,7 +55,7 @@ impl Sim {
             self.antic.roll = PI;
             self.antic.lids = LIDS;
             self.antic.wobble = WOBBLE * (TAU * KICK_HZ * 1.7 * t).sin();
-            self.antic.tuck = 0.5 + 0.5 * (TAU * KICK_HZ * t).sin();
+            self.antic.tuck = KICK_TUCK * (0.5 + 0.5 * (TAU * KICK_HZ * t).sin());
             if before < HEARTS_AT && t >= HEARTS_AT {
                 self.burst(Burst::Hearts, self.head());
             }

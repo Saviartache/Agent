@@ -20,11 +20,13 @@ const VIEW_COS: f32 = 0.866;
 /// Тень чуть шире тела.
 const SHADOW_SPREAD: f32 = 1.1;
 
-/// Холст вокруг точки на земле: квадрат со стороной `2 × extent`.
+/// Холст вокруг точки на земле: квадрат со стороной `2 × extent`; в полёте поднимается
+/// за телом, тень на земле остаётся в нижней половине.
 pub fn rect(pose: &Pose, extent: f32) -> PixelRect {
+    let rise = pose.rise().min(extent * 0.5);
     PixelRect {
         x: (pose.pos.x - extent).round() as i32,
-        y: (pose.pos.y - extent).round() as i32,
+        y: (pose.pos.y - extent - rise).round() as i32,
         width: (extent * 2.0).ceil().max(1.0) as u32,
         height: (extent * 2.0).ceil().max(1.0) as u32,
     }
@@ -205,6 +207,34 @@ mod tests {
         assert_eq!(rect.width, (extent * 2.0).ceil() as u32);
         assert_eq!(rect.x, (AT.x - extent).round() as i32);
         assert_eq!(rect.y, (AT.y - extent).round() as i32);
+    }
+
+    #[test]
+    fn high_flight_stays_on_the_canvas() {
+        for kind in RigKind::ALL {
+            let mut rig = Creature::new(kind, AT, Vec2::new(1.0, 0.0), SCALE);
+            let input = crate::rig::RigInput {
+                pos: AT,
+                vel: Vec2::ZERO,
+                heading: Vec2::new(1.0, 0.0),
+                look_at: None,
+                gesture: crate::rig::Gesture::Idle,
+                progress: 0.0,
+                scale: SCALE,
+                grounded: true,
+                antic: crate::rig::Antic {
+                    lift: 60.0,
+                    wings: 1.0,
+                    ..Default::default()
+                },
+            };
+            let (mut rng, mut steps) = (crate::rng::Rng::new(7), Vec::new());
+            for _ in 0..120 {
+                rig.update(1.0 / 60.0, &input, &mut rng, &mut steps);
+            }
+            let (pixels, w, h) = render(rig.pose());
+            assert_eq!(outside_rect(&pixels, w, h), 0, "{kind:?}");
+        }
     }
 
     #[test]

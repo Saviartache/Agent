@@ -20,9 +20,17 @@ const BREATH_HZ: f32 = 0.4;
 /// Голова ходит вперёд-назад на столько px, когда лапа поднята на `HEAD_BOB_LIFT`.
 const HEAD_BOB: f32 = 2.5;
 const HEAD_BOB_LIFT: f32 = 3.5;
-/// Изгиб шеи: контрольная точка выше и позади середины.
+/// Изгиб поднятой шеи: контрольная точка выше и позади основания, в длинах шеи.
 const NECK_ARCH_UP: f32 = 0.75;
 const NECK_ARCH_BACK: f32 = 0.2;
+/// Опущенная шея — дуга вперёд: контрольная точка на этой доле пути к голове по земле
+/// и чуть выше основания.
+const NECK_DROOP_REACH: f32 = 0.55;
+const NECK_DROOP_UP: f32 = 0.25;
+/// Шея считается поднятой, когда голова выше основания на эту долю её длины.
+const NECK_RAISED: f32 = 0.6;
+/// Опускаясь вперёд, шея не короче этой доли длины в покое: голова идёт дугой.
+const NECK_KEEP: f32 = 0.9;
 const DANGLE_SWAY: f32 = 2.5;
 const DANGLE_HZ: f32 = 2.0;
 /// Тень слабеет вдвое на этой высоте, design px.
@@ -134,11 +142,12 @@ impl Creature {
         let slack = build.neck_slack;
         let reach =
             build.neck_rest[0] + (m.neck_forward + HEAD_BOB * stride.clamp(-1.0, 1.0)) * slack;
+        let (reach, up) = keep_length(reach, build.neck_rest[1] + m.neck_up * slack, build);
         let aside = m.neck_side * slack;
         let upright = Vec3::new(
             forward.x * reach + right.x * aside,
             forward.y * reach + right.y * aside,
-            build.neck_rest[1] + m.neck_up * slack,
+            up,
         ) * s;
         let base = self.neck_base(&frame, center);
         // Лёжа голова на земле впереди груди
@@ -260,15 +269,42 @@ impl Creature {
 }
 
 /// Шея — дуга от основания к голове: сначала вверх, потом вперёд; `arch` — её изгиб.
+/// Голова, опускающаяся вперёд, идёт дугой: шея не втягивается на полпути к земле.
+/// Отведённая назад (чистка перьев) и поднятая голова не трогаются.
+fn keep_length(reach: f32, up: f32, build: &Build) -> (f32, f32) {
+    let [rest_reach, rest_up] = build.neck_rest;
+    let length = reach.hypot(up);
+    let least = rest_reach.hypot(rest_up) * NECK_KEEP;
+    if reach <= 0.0 || up >= rest_up || length >= least || length <= 0.0 {
+        return (reach, up);
+    }
+    let k = least / length;
+    (reach * k, up * k)
+}
+
 fn neck(base: Vec3, head: Vec3, forward: Vec2, arch: f32) -> [Vec3; NECK_POINTS] {
-    let span = (head - base).length() * arch;
-    // Без изгиба шея — прямая от основания к голове
-    let control = base.lerp(head, 0.5 * (1.0 - arch))
+    let reach = head - base;
+    let span = reach.length();
+    let raised = if span > 0.0 {
+        (reach.z / span / NECK_RAISED).clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    let upright = base
         + Vec3::new(
             -forward.x * span * NECK_ARCH_BACK,
             -forward.y * span * NECK_ARCH_BACK,
             span * NECK_ARCH_UP,
         );
+    // Без горба над спиной: шея выходит вперёд и плавно уходит вниз
+    let droop = base
+        + Vec3::new(
+            reach.x * NECK_DROOP_REACH,
+            reach.y * NECK_DROOP_REACH,
+            span * NECK_DROOP_UP,
+        );
+    // Без изгиба шея — прямая от основания к голове
+    let control = base.lerp(head, 0.5).lerp(droop.lerp(upright, raised), arch);
     std::array::from_fn(|i| {
         let t = i as f32 / (NECK_POINTS - 1) as f32;
         base.lerp(control, t).lerp(control.lerp(head, t), t)

@@ -9,7 +9,7 @@ use crate::rig::vec3::{Frame, Vec3};
 pub const NECK_POINTS: usize = 10;
 /// Глубина тела на экране сжата: без этого шея гуся, идущего от зрителя,
 /// складывается с высотой и вытягивается вдвое.
-const GROUND_SQUASH: f32 = 0.5;
+pub const GROUND_SQUASH: f32 = 0.5;
 
 /// Туловище — эллипсоид с полуосями вдоль хода, вбок и вверх.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -99,6 +99,11 @@ impl Pose {
     pub fn muzzle_tip(&self) -> Vec3 {
         let reach = self.head.radius * 0.7 + self.head.muzzle;
         self.head.center + self.head_frame().forward * reach
+    }
+
+    /// Насколько тело выше стойки: прыжок, полёт; px.
+    pub fn rise(&self) -> f32 {
+        (self.body.center.z - self.kind.build().stand_z * self.scale).max(0.0)
     }
 
     /// Сжимает позу вокруг точки на земле; `k` — доля от обычного размера.

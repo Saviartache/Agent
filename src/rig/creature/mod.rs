@@ -17,7 +17,7 @@ use self::build::Pair;
 use self::feet::{Feet, Stance};
 use self::gesture::{CLOCK_WRAP, Mods};
 use self::head::{HeadState, wrap_angle, yaw_of};
-pub use self::pose::{Body, Head, NECK_POINTS, Pose, flatten};
+pub use self::pose::{Body, GROUND_SQUASH, Head, NECK_POINTS, Pose, flatten};
 use super::vec3::Vec3;
 use super::{Gesture, RigKind};
 use crate::math::Vec2;

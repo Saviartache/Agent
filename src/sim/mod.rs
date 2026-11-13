@@ -43,7 +43,7 @@ use crate::render::{
     Sprite,
     scene::{self, CharacterView, Effects, SpriteView},
 };
-use crate::rig::{Antic, Creature, Footfall, Pose};
+use crate::rig::{Antic, Creature, Footfall, GROUND_SQUASH, Pose};
 use crate::rng::Rng;
 
 /// Длиннее кадр не считаем: после остановки потока или сна машины персонаж не прыгает.
@@ -461,6 +461,28 @@ impl Sim {
         }
         let anchor = self.character.clip(self.anim.clip()).anchor;
         self.body.pos - Vec2::new(0.0, anchor.y * self.sprite)
+    }
+
+    /// Высота кончика клюва или рыла над землёй, физические px; у спрайта — 0.
+    fn muzzle_height(&self) -> f32 {
+        self.rig
+            .as_ref()
+            .map_or(0.0, |rig| rig.pose().muzzle_tip().z)
+    }
+
+    /// Точка на земле под кончиком клюва или рыла.
+    fn muzzle_ground(&self) -> Vec2 {
+        self.head() + Vec2::new(0.0, self.muzzle_height())
+    }
+
+    /// Куда смотреть и где стоять, чтобы кончик клюва или рыла с вылетом `reach`
+    /// (design px от точки под телом) пришёлся на точку земли `at`.
+    fn reach_for(&self, at: Vec2, reach: f32) -> (Vec2, Vec2) {
+        let to = at - self.body.pos;
+        // Глубина на экране сжата: смотреть надо круче, чем видно
+        let face = Vec2::new(to.x, to.y / GROUND_SQUASH).normalized();
+        let ahead = Vec2::new(face.x, face.y * GROUND_SQUASH);
+        (face, at - ahead * (reach * self.sprite))
     }
 
     // --- команды ---

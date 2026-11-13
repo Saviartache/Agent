@@ -119,8 +119,6 @@ impl Antic {
 pub struct Look {
     /// Грязь на спине и копытах.
     pub mud: f32,
-    /// Проплешина на боку гуся.
-    pub bald: f32,
     /// Раздут после еды.
     pub bloat: f32,
     /// Грязный пятачок или клюв.
@@ -138,7 +136,6 @@ impl Look {
         };
         Self {
             mud: clamp(self.mud),
-            bald: clamp(self.bald),
             bloat: clamp(self.bloat),
             snout: clamp(self.snout),
         }

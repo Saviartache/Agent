@@ -7,15 +7,16 @@ use crate::behavior::Directive;
 use crate::effects::particles::Burst;
 use crate::effects::props::{PropId, PropKind};
 use crate::math::Vec2;
+use crate::rig::GROUND_SQUASH;
 use crate::sim::{Sim, drive::Drive};
 
 /// Расстояния — логические px (design px — у тела), время — с, частоты — Гц.
-const APPLE_DISTANCE: f32 = 120.0;
 const APPLE_DROP: f32 = 40.0;
 const APPLE_TTL: f32 = 40.0;
-/// Свинка встаёт на таком расстоянии от яблока, design px.
-const REACH: f32 = 36.0;
-const REACH_SLACK: f32 = 10.0;
+/// Пятачок у земли от точки под телом, design px (`snout_down(1.0)`).
+pub(in crate::sim::stunt::pig) const SNOUT_REACH: f32 = 22.0;
+/// Допуск места, логические px: не теснее, чем приходит ходьба.
+const REACH_SLACK: f32 = 9.0;
 const WALK_SECS: f32 = 8.0;
 const REAPPROACH_GAP: f32 = 0.4;
 const BITES: u8 = 4;
@@ -39,6 +40,7 @@ enum Phase {
     },
     Bite {
         apple: PropId,
+        face: Vec2,
         spent: f32,
     },
     Roll(f32),
@@ -51,11 +53,13 @@ pub(in crate::sim) struct Snack {
 
 impl Sim {
     pub(in crate::sim::stunt) fn begin_snack(&mut self) -> Option<Snack> {
-        let ahead = self.body.pos + self.body.heading.normalized() * (APPLE_DISTANCE * self.ui);
+        // Падает прямо под пятачок
+        let heading = self.body.heading.normalized();
+        let ahead = Vec2::new(heading.x, heading.y * GROUND_SQUASH) * (SNOUT_REACH * self.sprite);
         let at = self
             .bounds
             .nearest(self.body.pos)
-            .clamp(ahead, self.edge_margin());
+            .clamp(self.body.pos + ahead, self.edge_margin());
         let apple = self.props.spawn(
             PropKind::Apple,
             at,
@@ -83,10 +87,14 @@ impl Sim {
                 let Some(found) = self.props.get(apple).copied() else {
                     return Progress::Dropped;
                 };
-                let near = (REACH + REACH_SLACK) * self.sprite;
-                if found.resting() && self.body.pos.distance(found.pos) <= near {
+                let (face, spot) = self.reach_for(found.pos, SNOUT_REACH);
+                if found.resting() && self.body.pos.distance(spot) <= REACH_SLACK * self.ui {
                     self.halt();
-                    Phase::Bite { apple, spent: 0.0 }
+                    Phase::Bite {
+                        apple,
+                        face,
+                        spent: 0.0,
+                    }
                 } else if left <= dt {
                     self.props.remove(apple);
                     return Progress::Dropped;
@@ -105,7 +113,7 @@ impl Sim {
                     }
                 }
             }
-            Phase::Bite { apple, spent } => match self.bite(apple, spent, dt) {
+            Phase::Bite { apple, face, spent } => match self.bite(apple, face, spent, dt) {
                 Some(phase) => phase,
                 None => return self.overeat_or_finish(),
             },
@@ -125,17 +133,17 @@ impl Sim {
         Progress::Going(Snack { phase })
     }
 
-    /// Идёт к яблоку и встаёт, не доходя до него.
+    /// Идёт к яблоку и встаёт так, чтобы дотянуться пятачком.
     fn approach(&mut self, apple: Vec2) {
-        let gap = (apple - self.body.pos).normalized() * (REACH * self.sprite);
-        self.brain.push(Directive::MoveTo(apple - gap));
+        let (_, spot) = self.reach_for(apple, SNOUT_REACH);
+        self.brain.push(Directive::MoveTo(spot));
     }
 
     /// `None` — съедено, либо яблоко пропало.
-    fn bite(&mut self, id: PropId, spent: f32, dt: f32) -> Option<Phase> {
+    fn bite(&mut self, id: PropId, face: Vec2, spent: f32, dt: f32) -> Option<Phase> {
         let swing = (PI * spent / BITE_SECS).sin().max(0.0);
-        self.antic.neck_forward = 5.0 * swing;
-        self.antic.head_pitch = -0.5 * swing;
+        self.body.heading = face;
+        self.snout_down(0.7 + 0.3 * swing);
         self.antic.mouth = swing;
         let apple = self.props.get_mut(id)?;
         if spent < BITE_AT && spent + dt >= BITE_AT {
@@ -151,6 +159,7 @@ impl Sim {
         let next = spent + dt;
         Some(Phase::Bite {
             apple: id,
+            face,
             spent: if next >= BITE_SECS { 0.0 } else { next },
         })
     }
@@ -164,5 +173,13 @@ impl Sim {
         Progress::Going(Snack {
             phase: Phase::Roll(ROLL_SECS),
         })
+    }
+
+    /// Рыло вперёд и вниз, `depth` 0…1; при 1 пятачок касается земли в `SNOUT_REACH`
+    /// перед телом, а голова выходит вперёд передних ног, а не проваливается между ними.
+    pub(in crate::sim::stunt::pig) fn snout_down(&mut self, depth: f32) {
+        self.antic.neck_forward = 25.0 * depth;
+        self.antic.neck_up = -20.0 * depth;
+        self.antic.head_pitch = -1.4 * depth;
     }
 }

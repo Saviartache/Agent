@@ -1,4 +1,4 @@
-//! Состояния после сценок: грязная, оглушён, проплешина, раздута, сонный, грязный нос.
+//! Состояния после сценок: грязная, оглушён, раздута, сонный, грязный нос.
 //! Каждое 0…1 и гаснет само; на теле их показывает `Look`, оглушённого — шатание
 //! и звёздочки над головой. Грязь стирается шагами (`muddy_step`), остальное — временем.
 
@@ -10,7 +10,6 @@ use crate::rig::Look;
 
 /// За столько секунд состояние сходит с 1 до 0.
 const DAZED_SECS: f32 = 6.0;
-const BALD_SECS: f32 = 20.0;
 const BLOATED_SECS: f32 = 8.0;
 const SLEEPY_SECS: f32 = 30.0;
 const SNOUT_SECS: f32 = 15.0;
@@ -26,8 +25,6 @@ pub(super) struct Conditions {
     /// Грязь после лужи.
     pub muddy: f32,
     pub dazed: f32,
-    /// Проплешина на боку гуся.
-    pub bald: f32,
     /// Раздута после еды.
     pub bloated: f32,
     pub sleepy: f32,
@@ -43,7 +40,6 @@ fn fade(value: &mut f32, dt: f32, secs: f32) {
 impl Conditions {
     fn fade(&mut self, dt: f32) {
         fade(&mut self.dazed, dt, DAZED_SECS);
-        fade(&mut self.bald, dt, BALD_SECS);
         fade(&mut self.bloated, dt, BLOATED_SECS);
         fade(&mut self.sleepy, dt, SLEEPY_SECS);
         fade(&mut self.snout, dt, SNOUT_SECS);
@@ -52,7 +48,6 @@ impl Conditions {
     pub fn look(&self) -> Look {
         Look {
             mud: self.muddy,
-            bald: self.bald,
             bloat: self.bloated,
             snout: self.snout,
         }
@@ -88,7 +83,6 @@ mod tests {
         let mut cond = Conditions {
             muddy: 1.0,
             dazed: 1.0,
-            bald: 1.0,
             bloated: 1.0,
             sleepy: 1.0,
             snout: 1.0,
@@ -98,7 +92,7 @@ mod tests {
         assert!((cond.dazed - 0.5).abs() < 1e-4);
         cond.fade(SLEEPY_SECS);
         let look = cond.look();
-        assert_eq!(cond.dazed + cond.bald + cond.bloated + cond.sleepy, 0.0);
+        assert_eq!(cond.dazed + cond.bloated + cond.sleepy, 0.0);
         assert_eq!((look.mud, look.snout), (1.0, 0.0));
     }
 }

@@ -1,21 +1,22 @@
-//! Чистка перьев: голова к боку, клевки в перья по очереди с обеих сторон, выпадает перо;
-//! бывает, перестарался и вычистил проплешину.
+//! Чистка перьев: клюв к боку, клевки в перья по очереди с обеих сторон;
+//! перо выпадает из-под клюва.
 
 use std::f32::consts::TAU;
 
 use super::super::Progress;
 use crate::math::Vec2;
-use crate::rig::Eyes;
 use crate::sim::Sim;
 
-/// Время — с.
+/// Время — с, углы — рад, расстояния — design px.
 const PECK_SECS: f32 = 0.7;
 const PECKS_PER_SIDE: u8 = 3;
 const SIDES: u8 = 2;
-const HEAD_YAW: f32 = 1.6;
+/// Голова отведена назад и повёрнута к боку так, что кончик клюва лежит на перьях.
+const HEAD_YAW: f32 = 1.4;
+const NECK_FORWARD: f32 = -12.0;
+const NECK_UP: f32 = -8.0;
+const HEAD_PITCH: f32 = -0.6;
 const PECK_DIP: f32 = 0.3;
-const BALD_CHANCE: f32 = 0.3;
-const INSPECT_SECS: f32 = 1.2;
 
 #[derive(Debug)]
 pub(in crate::sim) struct Preen {
@@ -26,8 +27,6 @@ pub(in crate::sim) struct Preen {
     pecked: u8,
     /// С какого клевка роняет перья.
     sheds: [u8; 2],
-    overdo: bool,
-    inspect: Option<f32>,
 }
 
 impl Sim {
@@ -45,25 +44,15 @@ impl Sim {
             } else {
                 sheds
             },
-            overdo: self.rng.chance(BALD_CHANCE),
-            inspect: None,
         })
     }
 
     pub(in crate::sim::stunt) fn step_preen(&mut self, mut act: Preen, dt: f32) -> Progress<Preen> {
-        if let Some(t) = act.inspect {
-            return self.inspect(act, t + dt);
-        }
         act.t += dt;
         let total = PECKS_PER_SIDE * SIDES;
         let index = (act.t / PECK_SECS) as u8;
         if index >= total {
-            if !act.overdo {
-                return Progress::Finished;
-            }
-            self.cond.bald = 1.0;
-            act.inspect = Some(0.0);
-            return Progress::Going(act);
+            return Progress::Finished;
         }
         let side = if (index / PECKS_PER_SIDE).is_multiple_of(2) {
             act.first
@@ -71,31 +60,19 @@ impl Sim {
             -act.first
         };
         let local = act.t - f32::from(index) * PECK_SECS;
-        if index == act.pecked {
-            act.pecked += 1;
-            if act.sheds.contains(&index) {
-                self.shed_feather(self.body.pos, Vec2::ZERO);
-            }
-        }
+        let dip = (TAU * local / PECK_SECS).sin().max(0.0);
         let a = &mut self.antic;
         a.head_yaw = HEAD_YAW * side;
-        a.neck_side = 3.0 * side;
-        a.neck_forward = -2.0;
-        a.head_pitch = -0.5 - PECK_DIP * (TAU * local / PECK_SECS).sin().max(0.0);
-        Progress::Going(act)
-    }
-
-    fn inspect(&mut self, mut act: Preen, t: f32) -> Progress<Preen> {
-        if t >= INSPECT_SECS {
-            return Progress::Finished;
+        a.neck_forward = NECK_FORWARD;
+        a.neck_up = NECK_UP;
+        a.head_pitch = HEAD_PITCH - PECK_DIP * dip;
+        // Перо — из-под клюва, когда он в перьях
+        if index == act.pecked && local >= PECK_SECS * 0.25 {
+            act.pecked += 1;
+            if act.sheds.contains(&index) {
+                self.shed_feather(Vec2::ZERO);
+            }
         }
-        act.inspect = Some(t);
-        let a = &mut self.antic;
-        a.head_yaw = HEAD_YAW * act.first;
-        a.neck_side = 3.0 * act.first;
-        a.neck_forward = -2.0;
-        a.head_pitch = -0.4;
-        a.eyes = Eyes::Wide;
         Progress::Going(act)
     }
 }

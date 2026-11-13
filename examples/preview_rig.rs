@@ -2,7 +2,7 @@
 //! `cargo run -p ui-agent --example preview_rig -- <goose|pig> <out.png> [cycle,<жест>,…]`
 //! `cycle` — кадры ходьбы и бега; `mud` — тело в грязи после лужи;
 //! жест — имя встроенного действия (`react`, `sleep`, …);
-//! `antic:поле=число;eyes=crossed;tongue=1;bald=1` — накладка сценки и вид тела по всем сторонам.
+//! `antic:поле=число;eyes=crossed;tongue=1;mud=1` — накладка сценки и вид тела по всем сторонам.
 //! Без фильтра рисуется всё.
 
 use std::{error::Error, fs::File, io::BufWriter, path::PathBuf};
@@ -134,7 +134,7 @@ fn gesture_speed(gesture: Gesture) -> f32 {
     }
 }
 
-/// `antic:roll=3.14;eyes=crossed;bald=1` — накладка сценки и вид тела.
+/// `antic:roll=3.14;eyes=crossed;mud=1` — накладка сценки и вид тела.
 fn parse_antic(spec: &str) -> Result<(Antic, Look), String> {
     let (mut antic, mut look) = (Antic::default(), Look::default());
     for pair in spec.split(';').filter(|pair| !pair.is_empty()) {
@@ -177,7 +177,6 @@ fn parse_antic(spec: &str) -> Result<(Antic, Look), String> {
             "flap" => &mut antic.flap,
             "knot" => &mut antic.knot,
             "mud" => &mut look.mud,
-            "bald" => &mut look.bald,
             "bloat" => &mut look.bloat,
             "snout" => &mut look.snout,
             _ => return Err(format!("нет такого поля: {key}")),
