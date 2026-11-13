@@ -1,6 +1,6 @@
 //! Тело, которое рисуется из примитивов и живёт само — лапы шагают и встают
 //! на землю, шея и голова идут с запозданием, глаза моргают. Скелет общий,
-//! вид (гусь, свинка) задаёт сложение.
+//! вид (гусь, свинка, пингвин) задаёт сложение.
 
 mod antic;
 mod assemble;
@@ -238,7 +238,10 @@ impl Creature {
 
     fn stance(&self, pair: &Pair, vel: Vec2) -> Stance {
         let grounded = self.grounded && !self.aloft();
-        pair.stance(self.pos, self.yaw, vel, self.scale, grounded)
+        Stance {
+            stride: self.kind.build().stride,
+            ..pair.stance(self.pos, self.yaw, vel, self.scale, grounded)
+        }
     }
 
     /// Мусор на входе заменяется последним хорошим значением.

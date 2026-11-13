@@ -10,7 +10,7 @@ use super::{Canvas, Color};
 use crate::math::Vec2;
 use crate::rig::{Eyes, Frame, NECK_POINTS, Vec3};
 
-const ORANGE: Color = Color(0xFF_9A_1F);
+pub(super) const ORANGE: Color = Color(0xFF_9A_1F);
 
 /// Раскрытый клюв: угол половинки при `mouth = 1`, рад; радиусы половинки.
 const GAPE: f32 = 0.5;
@@ -62,13 +62,13 @@ pub(super) fn draw(canvas: &mut Canvas, pen: &Pen) {
     goose.wings(canvas, false);
     goose.white(canvas, OUTLINE, OUTLINE_WIDTH * pen.pose.scale);
     if !beak_front {
-        goose.beak(canvas);
+        beak(canvas, pen);
     }
     goose.white(canvas, WHITE, 0.0);
     goose.wings(canvas, true);
     goose.feet(canvas, true);
     if beak_front {
-        goose.beak(canvas);
+        beak(canvas, pen);
     }
     goose.eyes(canvas);
 }
@@ -170,72 +170,6 @@ impl Goose<'_> {
         }
     }
 
-    fn beak(&self, canvas: &mut Canvas) {
-        let (pen, pose, s) = (self.0, self.0.pose, self.0.pose.scale);
-        let frame = pose.head_frame();
-        let base = pose.head.center + frame.forward * (pose.head.radius * BEAK_BASE);
-        let tip = pose.muzzle_tip();
-        let gape = (pose.antic.mouth.clamp(0.0, 1.0) * GAPE).max(if pose.antic.tongue {
-            TONGUE_GAPE
-        } else {
-            0.0
-        });
-        if gape <= 0.0 {
-            canvas.fill_capsule(
-                pen.at(base),
-                pen.at(tip),
-                BEAK_RADII[0] * s,
-                BEAK_RADII[1] * s,
-                ORANGE,
-                1.0,
-            );
-        } else {
-            self.gaping(canvas, base, (tip - base).length(), gape);
-        }
-        let mud = pose.look.snout;
-        if mud > 0.0 {
-            let (from, to) = (pen.at(base.lerp(tip, MUD_FROM)), pen.at(tip));
-            let r = BEAK_RADII[1] * s * MUD_WIDTH;
-            canvas.fill_capsule(from, to, r, r, MUD, mud);
-        }
-    }
-
-    /// Две половинки клюва углом; между ними нутро и язык.
-    fn gaping(&self, canvas: &mut Canvas, base: Vec3, length: f32, gape: f32) {
-        let (pen, pose, s) = (self.0, self.0.pose, self.0.pose.scale);
-        let frame = pose.head_frame();
-        let half = |sign: f32| {
-            let dir = frame.forward * gape.cos() + frame.up * (sign * gape.sin());
-            base + dir * length
-        };
-        let (upper, lower) = (half(1.0), half(-1.0));
-        let radii = HALF_RADII.map(|r| r * s);
-        let base2 = pen.at(base);
-        canvas.fill_capsule(base2, pen.at(lower), radii[0], radii[1], ORANGE, 1.0);
-        canvas.fill_capsule(
-            base2,
-            pen.at(base.lerp(upper.lerp(lower, 0.5), 0.9)),
-            radii[0],
-            radii[1],
-            MOUTH,
-            1.0,
-        );
-        if pose.antic.tongue {
-            let down = frame.right * (TONGUE_AT[0] * pose.head.radius)
-                + frame.up * (-TONGUE_AT[1] * pose.head.radius);
-            let root = base.lerp(lower, 0.6);
-            canvas.fill_capsule(
-                pen.at(root),
-                pen.at(root + down),
-                TONGUE_RADII[0] * s,
-                TONGUE_RADII[1] * s,
-                TONGUE,
-                1.0,
-            );
-        }
-        canvas.fill_capsule(base2, pen.at(upper), radii[0], radii[1], ORANGE, 1.0);
-    }
-
     fn eyes(&self, canvas: &mut Canvas) {
         let pose = self.0.pose;
         let head = &pose.head;
@@ -264,6 +198,74 @@ impl Goose<'_> {
             }
         }
     }
+}
+
+/// Оранжевый клюв от головы к `muzzle_tip`: раскрыт ртом сценки, грязь — по `look.snout`.
+/// Тот же у пингвина.
+pub(super) fn beak(canvas: &mut Canvas, pen: &Pen) {
+    let (pose, s) = (pen.pose, pen.pose.scale);
+    let frame = pose.head_frame();
+    let base = pose.head.center + frame.forward * (pose.head.radius * BEAK_BASE);
+    let tip = pose.muzzle_tip();
+    let gape = (pose.antic.mouth.clamp(0.0, 1.0) * GAPE).max(if pose.antic.tongue {
+        TONGUE_GAPE
+    } else {
+        0.0
+    });
+    if gape <= 0.0 {
+        canvas.fill_capsule(
+            pen.at(base),
+            pen.at(tip),
+            BEAK_RADII[0] * s,
+            BEAK_RADII[1] * s,
+            ORANGE,
+            1.0,
+        );
+    } else {
+        gaping(canvas, pen, base, (tip - base).length(), gape);
+    }
+    let mud = pose.look.snout;
+    if mud > 0.0 {
+        let (from, to) = (pen.at(base.lerp(tip, MUD_FROM)), pen.at(tip));
+        let r = BEAK_RADII[1] * s * MUD_WIDTH;
+        canvas.fill_capsule(from, to, r, r, MUD, mud);
+    }
+}
+
+/// Две половинки клюва углом; между ними нутро и язык.
+fn gaping(canvas: &mut Canvas, pen: &Pen, base: Vec3, length: f32, gape: f32) {
+    let (pose, s) = (pen.pose, pen.pose.scale);
+    let frame = pose.head_frame();
+    let half = |sign: f32| {
+        let dir = frame.forward * gape.cos() + frame.up * (sign * gape.sin());
+        base + dir * length
+    };
+    let (upper, lower) = (half(1.0), half(-1.0));
+    let radii = HALF_RADII.map(|r| r * s);
+    let base2 = pen.at(base);
+    canvas.fill_capsule(base2, pen.at(lower), radii[0], radii[1], ORANGE, 1.0);
+    canvas.fill_capsule(
+        base2,
+        pen.at(base.lerp(upper.lerp(lower, 0.5), 0.9)),
+        radii[0],
+        radii[1],
+        MOUTH,
+        1.0,
+    );
+    if pose.antic.tongue {
+        let down = frame.right * (TONGUE_AT[0] * pose.head.radius)
+            + frame.up * (-TONGUE_AT[1] * pose.head.radius);
+        let root = base.lerp(lower, 0.6);
+        canvas.fill_capsule(
+            pen.at(root),
+            pen.at(root + down),
+            TONGUE_RADII[0] * s,
+            TONGUE_RADII[1] * s,
+            TONGUE,
+            1.0,
+        );
+    }
+    canvas.fill_capsule(base2, pen.at(upper), radii[0], radii[1], ORANGE, 1.0);
 }
 
 #[cfg(test)]

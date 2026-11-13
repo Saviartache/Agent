@@ -133,8 +133,10 @@ pub fn parse(text: &str) -> Result<Manifest, AgentError> {
 }
 
 fn rig_kind(name: &str) -> Result<RigKind, AgentError> {
-    RigKind::from_name(name)
-        .ok_or_else(|| fail(format!("неизвестное тело «{name}», есть: goose, pig")))
+    RigKind::from_name(name).ok_or_else(|| {
+        let known = RigKind::ALL.map(RigKind::name).join(", ");
+        fail(format!("неизвестное тело «{name}», есть: {known}"))
+    })
 }
 
 /// Спрайтовой анимации нужен лист, анимации тела — только время.

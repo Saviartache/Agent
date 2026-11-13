@@ -120,8 +120,8 @@ impl Sim {
     }
 
     /// Метки по отрезку клюва: линия сплошная, даже когда клюв идёт быстро.
-    /// Возвращает, докуда дотянулась линия.
-    fn stamp_between(&mut self, from: Vec2, to: Vec2) -> Vec2 {
+    /// Возвращает, докуда дотянулась линия. Ею же пингвин чертит полосу пузом.
+    pub(in crate::sim::stunt) fn stamp_between(&mut self, from: Vec2, to: Vec2) -> Vec2 {
         let gap = STAMP_GAP * self.ui;
         let span = to - from;
         let steps = (span.length() / gap).floor() as usize;

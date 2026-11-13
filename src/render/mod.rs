@@ -4,6 +4,7 @@ pub mod canvas;
 pub mod creature;
 mod goose;
 mod marks;
+mod penguin;
 mod pig;
 pub mod pixel;
 mod props;

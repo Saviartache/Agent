@@ -103,6 +103,25 @@ impl Frame {
         }
     }
 
+    /// Наклон вбок вокруг горизонтальной оси хода `yaw`, рад: плюс — макушкой вправо.
+    pub fn rocked(self, yaw: f32, angle: f32) -> Self {
+        if angle == 0.0 {
+            return self;
+        }
+        let (sy, cy) = yaw.sin_cos();
+        let (sa, ca) = angle.sin_cos();
+        let side = Vec3::new(-sy, cy, 0.0);
+        let rock = |v: Vec3| {
+            let (a, b) = (v.dot(side), v.z);
+            v + side * (a * ca + b * sa - a) + Vec3::new(0.0, 0.0, b * ca - a * sa - b)
+        };
+        Self {
+            forward: rock(self.forward),
+            right: rock(self.right),
+            up: rock(self.up),
+        }
+    }
+
     pub fn point(&self, origin: Vec3, forward: f32, right: f32, up: f32) -> Vec3 {
         origin + self.forward * forward + self.right * right + self.up * up
     }
@@ -123,6 +142,20 @@ mod tests {
             assert!(a.dot(b).abs() < 1e-5);
         }
         assert!((frame.up.length() - 1.0).abs() < 1e-5);
+    }
+
+    #[test]
+    fn rocking_tilts_the_top_to_the_right_and_keeps_the_axes() {
+        let frame = Frame::new(0.4, 1.2, 0.0).rocked(0.4, 0.3);
+        let right = Frame::new(0.4, 0.0, 0.0).right;
+        assert!(frame.forward.dot(right) > 0.25);
+        for (a, b) in [
+            (frame.forward, frame.right),
+            (frame.forward, frame.up),
+            (frame.right, frame.up),
+        ] {
+            assert!(a.dot(b).abs() < 1e-5);
+        }
     }
 
     #[test]

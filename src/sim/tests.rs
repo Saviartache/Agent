@@ -274,6 +274,19 @@ mod goose {
     }
 }
 
+mod penguin {
+    use super::*;
+
+    fn character() -> Character {
+        Character::builtin(RigKind::Penguin).unwrap()
+    }
+
+    include!("scenarios.rs");
+    include!("stunt_tests/common_a.rs");
+    include!("stunt_tests/common_b.rs");
+    include!("stunt_tests/penguin.rs");
+}
+
 mod sprite {
     use super::*;
 

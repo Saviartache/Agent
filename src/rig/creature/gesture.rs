@@ -17,6 +17,9 @@ const STRETCH_LIMIT: f32 = 3.0;
 const RUN_NECK_FORWARD: f32 = 4.0;
 const RUN_NECK_DOWN: f32 = -6.0;
 const RUN_LEAN: f32 = -0.3;
+const RUN_WINGS: f32 = 0.6;
+/// Хлопков за клип радости.
+const CLAPS: f32 = 4.0;
 const CALM_BREATH: f32 = 0.35;
 const SLEEP_BREATH: f32 = 0.9;
 /// Насколько приседает спящий, px.
@@ -66,6 +69,8 @@ mods! {
     /// Растяжение тела минус единица: вдоль и вбок, по высоте.
     stretch_x,
     stretch_y,
+    /// 0..1: крылья оттопырены (`Build::gesture_wings`).
+    wings,
 }
 
 impl Mods {
@@ -126,6 +131,7 @@ pub fn target(gesture: Gesture, progress: f32, clock: f32, run: f32) -> Mods {
         neck_forward: RUN_NECK_FORWARD * run,
         neck_up: RUN_NECK_DOWN * run,
         pitch: RUN_LEAN * run,
+        wings: RUN_WINGS * run,
         breath: CALM_BREATH,
         ..Mods::default()
     };
@@ -152,6 +158,8 @@ pub fn target(gesture: Gesture, progress: f32, clock: f32, run: f32) -> Mods {
             m.hop = 6.0 * hop;
             m.neck_up = 3.0 * hop;
             m.head_pitch = 0.3 * hop;
+            // Хлопает крыльями: у кого они от жестов
+            m.wings = envelope(p) * (0.5 - 0.5 * (CLAPS * TAU * p).cos());
         }
         Gesture::Think => {
             m.head_roll = 0.38;
