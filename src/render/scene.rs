@@ -233,7 +233,7 @@ pub fn draw_effects(canvas: &mut Canvas, origin: Vec2, effects: &Effects<'_>, ui
 pub const CARD_WIDTH: f32 = 260.0;
 pub const TITLE_PX: f32 = 15.0;
 pub const BODY_PX: f32 = 13.0;
-const CARD_MAX_HEIGHT: f32 = 92.0;
+const CARD_MAX_HEIGHT: f32 = 156.0;
 const CARD_MIN_HEIGHT: f32 = 44.0;
 const PADDING: f32 = 12.0;
 /// Метка тона — кружок, как лапки гуся.
@@ -651,10 +651,10 @@ mod tests {
     fn card_size_grows_with_text_within_limits() {
         assert_eq!(card_size(None, None, 1.0), (260, 44));
         assert_eq!(card_size(Some(20), Some(34), 1.0), (260, 82));
-        assert_eq!(card_size(Some(22), Some(500), 1.0), (260, 92));
+        assert_eq!(card_size(Some(22), Some(500), 1.0), (260, 156));
         assert_eq!(card_size(Some(20), None, 2.0), (520, 88));
-        assert_eq!(body_limit(22, 1.0), 68 - 22 - 4);
-        assert_eq!(body_limit(0, 1.0), 68);
+        assert_eq!(body_limit(22, 1.0), 132 - 22 - 4);
+        assert_eq!(body_limit(0, 1.0), 132);
     }
 
     #[test]

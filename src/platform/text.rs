@@ -81,6 +81,42 @@ fn draw(dc: HDC, text: &[u16], rect: &mut RECT, flags: u32) -> i32 {
     unsafe { DrawTextW(dc, text.as_ptr(), text.len() as i32, rect, flags) }
 }
 
+fn measure(dc: HDC, text: &[u16], max_width: u32) -> RECT {
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: max_width.min(i32::MAX as u32) as i32,
+        bottom: 0,
+    };
+    draw(dc, text, &mut rect, FLAGS | DT_CALCRECT);
+    rect
+}
+
+/// Самый длинный префикс с «…», который влезает целыми строками.
+fn fit(dc: HDC, text: &[u16], max_width: u32, max_height: u32) -> Vec<u16> {
+    let candidate = |n: usize| {
+        let mut n = n;
+        // Не рвём суррогатную пару
+        if n > 0 && (0xD800..0xDC00).contains(&text[n - 1]) {
+            n -= 1;
+        }
+        let head = String::from_utf16_lossy(&text[..n]);
+        let mut out: Vec<u16> = head.trim_end().encode_utf16().collect();
+        out.push('…' as u16);
+        out
+    };
+    let (mut low, mut high) = (0, text.len());
+    while low < high {
+        let mid = (low + high).div_ceil(2);
+        if measure(dc, &candidate(mid), max_width).bottom.max(0) as u32 <= max_height {
+            low = mid;
+        } else {
+            high = mid - 1;
+        }
+    }
+    candidate(low)
+}
+
 pub fn rasterize(
     text: &str,
     pixel_height: u32,
@@ -96,19 +132,17 @@ pub fn rasterize(
     if text.is_empty() || pixel_height == 0 || max_width == 0 || max_height == 0 {
         return Ok(empty);
     }
-    let text: Vec<u16> = text.encode_utf16().collect();
+    let mut text: Vec<u16> = text.encode_utf16().collect();
     // Поверхность нужна и как контекст для замера, и как холст для рисования.
     let mut surface = Surface::new(max_width, max_height)?;
     let dc = surface.dc();
     let _font = Font::select(dc, pixel_height, bold)?;
 
-    let mut measured = RECT {
-        left: 0,
-        top: 0,
-        right: max_width.min(i32::MAX as u32) as i32,
-        bottom: 0,
-    };
-    draw(dc, &text, &mut measured, FLAGS | DT_CALCRECT);
+    let mut measured = measure(dc, &text, max_width);
+    if measured.bottom.max(0) as u32 > max_height {
+        text = fit(dc, &text, max_width, max_height);
+        measured = measure(dc, &text, max_width);
+    }
     let width = (measured.right.max(0) as u32).min(max_width);
     let height = (measured.bottom.max(0) as u32).min(max_height);
     if width == 0 || height == 0 {
