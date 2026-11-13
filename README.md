@@ -1,7 +1,5 @@
 <div align="center">
 
-# Mr. Anderson
-
 **Живой персонаж рабочего стола Windows для ваших Rust-приложений**
 
 Свинка или гусь гуляют поверх окон, замечают курсор, приносят карточки уведомлений
@@ -34,16 +32,16 @@
 </tr>
 </table>
 
-| Строка | Жест | Когда играет |
-|:-:|---|---|
-| 1 | `idle` | стоит и оглядывается |
-| 2 | `walk` | гуляет по экрану |
-| 3 | `run` | бежит к цели или от курсора |
-| 4 | `react` | на щелчок и неожиданности |
-| 5 | `celebrate` | приложение сообщило об успехе |
-| 6 | `think` | приложение думает (`Status::Thinking`) |
-| 7 | `sleep` | режим `Sleep` или долгий простой |
-| 8 | `wave` | приветствие |
+| Строка | Жест        | Когда играет                           |
+| :----: | ----------- | -------------------------------------- |
+|   1    | `idle`      | стоит и оглядывается                   |
+|   2    | `walk`      | гуляет по экрану                       |
+|   3    | `run`       | бежит к цели или от курсора            |
+|   4    | `react`     | на щелчок и неожиданности              |
+|   5    | `celebrate` | приложение сообщило об успехе          |
+|   6    | `think`     | приложение думает (`Status::Thinking`) |
+|   7    | `sleep`     | режим `Sleep` или долгий простой       |
+|   8    | `wave`      | приветствие                            |
 
 ## Сценки
 
@@ -55,11 +53,11 @@
 <details>
 <summary><b>Полный список сценок</b></summary>
 
-| Кто | Сценки |
-|---|---|
-| Оба | `cursor_heist` `zoomies` `note` `chase` `boop` `startle` `sneeze` `hiccups` `dance` `stretch` `stare` `nap` `gift` `ball` `slip` `trip_over_card` `self_scare` `peek` `edge_tumble` `butterfly` `flatten` `fake_death` |
-| Гусь | `leaf_pile` `wall_slam` `honk` `hiss` `march` `skid` `flight` `preen` `crumbs` `bath` `nest` `egg_surprise` `scribble` `neck_tangle` `goslings` |
-| Свинка | `mud_bath` `oops` `fart_jump` `faceplant` `slide` `stuck` `shake_off` `mud_nap` `puddle_hop` `dig` `sniff` `snack` `bulldozer` `tail_chase` `piggy_bank` `belly_up` |
+| Кто    | Сценки                                                                                                                                                                                                                 |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Оба    | `cursor_heist` `zoomies` `note` `chase` `boop` `startle` `sneeze` `hiccups` `dance` `stretch` `stare` `nap` `gift` `ball` `slip` `trip_over_card` `self_scare` `peek` `edge_tumble` `butterfly` `flatten` `fake_death` |
+| Гусь   | `leaf_pile` `wall_slam` `honk` `hiss` `march` `skid` `flight` `preen` `crumbs` `bath` `nest` `egg_surprise` `scribble` `neck_tangle` `goslings`                                                                        |
+| Свинка | `mud_bath` `oops` `fart_jump` `faceplant` `slide` `stuck` `shake_off` `mud_nap` `puddle_hop` `dig` `sniff` `snack` `bulldozer` `tail_chase` `piggy_bank` `belly_up`                                                    |
 
 </details>
 
@@ -117,16 +115,16 @@ while let Some(event) = agent.try_event() { // не блокирует
 agent.shutdown(); // то же делает Drop
 ```
 
-| Метод | Что делает |
-|---|---|
-| `set_status(Status)` | показать состояние приложения |
-| `notify(Notification)` / `report(Status, Notification)` | принести карточку (с итогом операции) |
-| `play("имя")` · `hold("имя")` / `release()` | разовое действие или удерживаемое состояние |
-| `stage(Stunt)` · `surprise()` | сыграть сценку или что-нибудь случайное |
-| `set_behavior(BehaviorMode)` | `Wander`, `Stay`, `FollowCursor`, `ChaseCursor`, `Sleep` |
-| `move_to(Vec2)` · `spawn()` / `despawn()` | перейти в точку экрана, появиться или уйти |
-| `pause(bool)` · `set_visible(bool)` | заморозить или спрятать |
-| `send(Command)` | любая команда, переданная как данные |
+| Метод                                                   | Что делает                                               |
+| ------------------------------------------------------- | -------------------------------------------------------- |
+| `set_status(Status)`                                    | показать состояние приложения                            |
+| `notify(Notification)` / `report(Status, Notification)` | принести карточку (с итогом операции)                    |
+| `play("имя")` · `hold("имя")` / `release()`             | разовое действие или удерживаемое состояние              |
+| `stage(Stunt)` · `surprise()`                           | сыграть сценку или что-нибудь случайное                  |
+| `set_behavior(BehaviorMode)`                            | `Wander`, `Stay`, `FollowCursor`, `ChaseCursor`, `Sleep` |
+| `move_to(Vec2)` · `spawn()` / `despawn()`               | перейти в точку экрана, появиться или уйти               |
+| `pause(bool)` · `set_visible(bool)`                     | заморозить или спрятать                                  |
+| `send(Command)`                                         | любая команда, переданная как данные                     |
 
 `agent.handle()` возвращает `AgentHandle` (`Clone + Send + Sync`) с теми же командами,
 чтобы раздать их фоновым задачам.
