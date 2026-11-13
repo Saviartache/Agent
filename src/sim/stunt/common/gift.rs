@@ -146,6 +146,7 @@ impl Sim {
         let kind = match self.character.rig() {
             Some(RigKind::Goose) if self.rng.chance(0.5) => PropKind::Feather,
             Some(RigKind::Pig) => PropKind::Acorn,
+            Some(RigKind::Elephant) => PropKind::Apple,
             _ => PropKind::Pebble,
         };
         let at = area.clamp(self.body.pos, 0.0);

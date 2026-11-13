@@ -1,4 +1,4 @@
-//! Сложение вида: чем гусь отличается от свинки при общем скелете.
+//! Сложение вида: чем гусь, свинка и слоник отличаются при общем скелете.
 
 use super::feet::Stance;
 use crate::math::Vec2;
@@ -36,6 +36,19 @@ pub struct Build {
     /// Ноги в руках висят под телом: разнос от оси и расстояние вниз от центра.
     pub dangle_side: f32,
     pub dangle_down: f32,
+    /// Хобот слона: вместо клюва и рыла.
+    pub trunk: Option<Trunk>,
+}
+
+/// Хобот: гибкий, кончик на пружине.
+pub struct Trunk {
+    pub length: f32,
+    /// Наклон к земле в покое, рад: висит вниз.
+    pub droop: f32,
+    /// Во сколько раз наклон головы поднимает или опускает хобот.
+    pub gain: f32,
+    /// Доля гусиного отставания кончика.
+    pub slack: f32,
 }
 
 const GOOSE: Build = Build {
@@ -60,6 +73,7 @@ const GOOSE: Build = Build {
     fore: None,
     dangle_side: 4.5,
     dangle_down: 12.0,
+    trunk: None,
 };
 
 /// Копилка на коротких ногах: голова почти с тело и сидит на нём без шеи.
@@ -88,6 +102,40 @@ const PIG: Build = Build {
     }),
     dangle_side: 5.0,
     dangle_down: 11.0,
+    trunk: None,
+};
+
+/// Пухлый слонёнок на ногах-тумбах: голова на теле без шеи, хобот висит.
+const ELEPHANT: Build = Build {
+    body_radii: [14.0, 11.0, 10.5],
+    stand_z: 14.0,
+    body_pitch: 0.0,
+    neck_base: [9.5, 3.5],
+    neck_rest: [4.5, 3.0],
+    curl_rest: [13.0, 1.0, 1.5],
+    neck_slack: 0.3,
+    sidesteps: false,
+    head_turn: 0.8,
+    head_radius: 10.0,
+    head_pitch: 0.0,
+    muzzle: 0.0,
+    print: 2.6,
+    hind: Pair {
+        along: -7.5,
+        side: 5.0,
+    },
+    fore: Some(Pair {
+        along: 7.5,
+        side: 5.6,
+    }),
+    dangle_side: 5.5,
+    dangle_down: 12.0,
+    trunk: Some(Trunk {
+        length: 13.0,
+        droop: -1.2,
+        gain: 2.2,
+        slack: 0.6,
+    }),
 };
 
 impl RigKind {
@@ -100,6 +148,7 @@ impl RigKind {
         match self {
             Self::Goose => &GOOSE,
             Self::Pig => &PIG,
+            Self::Elephant => &ELEPHANT,
         }
     }
 }

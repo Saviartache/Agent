@@ -68,6 +68,8 @@ pub struct Pose {
     pub feet: [Vec3; 2],
     /// Передняя пара четвероногого.
     pub fore: Option<[Vec3; 2]>,
+    /// Хобот слона: корень на морде и кончик.
+    pub trunk: Option<[Vec3; 2]>,
     /// Сила тени: 1 на земле, меньше в прыжке и в руках.
     pub shadow: f32,
     /// Насколько лапы поджаты под тело (сон).
@@ -95,8 +97,11 @@ impl Pose {
         Frame::new(head.dir.y.atan2(head.dir.x), head.pitch, head.roll)
     }
 
-    /// Кончик клюва или рыла.
+    /// Кончик клюва, рыла или хобота.
     pub fn muzzle_tip(&self) -> Vec3 {
+        if let Some([_, tip]) = self.trunk {
+            return tip;
+        }
         let reach = self.head.radius * 0.7 + self.head.muzzle;
         self.head.center + self.head_frame().forward * reach
     }
@@ -119,5 +124,6 @@ impl Pose {
         self.head.muzzle *= k;
         self.feet = self.feet.map(zoom);
         self.fore = self.fore.map(|feet| feet.map(zoom));
+        self.trunk = self.trunk.map(|trunk| trunk.map(zoom));
     }
 }

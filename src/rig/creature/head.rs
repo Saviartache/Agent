@@ -44,11 +44,52 @@ pub struct Aim {
     pub yaw_limit: f32,
 }
 
+/// Точка на пружине относительно своей опоры: голова от основания шеи, кончик хобота
+/// от его корня.
+#[derive(Clone, Debug)]
+pub struct Spring {
+    rel: Vec3,
+    vel: Vec3,
+}
+
+impl Spring {
+    pub fn resting(rest: Vec3) -> Self {
+        Self {
+            rel: rest,
+            vel: Vec3::ZERO,
+        }
+    }
+
+    pub fn rel(&self) -> Vec3 {
+        self.rel
+    }
+
+    /// Тянется к `rest`, а ускорение тела `accel` её отбрасывает; `slack` — доля
+    /// инерции и отставания.
+    pub fn update(&mut self, dt: f32, rest: Vec3, accel: Vec2, scale: f32, slack: f32) {
+        let inertia = Vec3::on_ground(accel, 0.0) * (-INERTIA * slack);
+        let pull = (rest - self.rel) * (SPRING_OMEGA * SPRING_OMEGA);
+        let drag = self.vel * (2.0 * SPRING_DAMPING * SPRING_OMEGA);
+        self.vel = self.vel + (pull - drag + inertia) * dt;
+        self.rel = self.rel + self.vel * dt;
+        // Страховка от огромных шагов и мусора на входе
+        let lag = self.rel - rest;
+        let limit = MAX_LAG * scale * slack;
+        if !self.rel.is_finite() || lag.length() > limit {
+            self.rel = if self.rel.is_finite() {
+                rest + lag.normalized() * limit
+            } else {
+                rest
+            };
+            self.vel = Vec3::ZERO;
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct HeadState {
     /// Голова относительно основания шеи.
-    rel: Vec3,
-    vel: Vec3,
+    spring: Spring,
     yaw: f32,
     glance: f32,
     glance_in: f32,
@@ -69,8 +110,7 @@ pub fn yaw_of(direction: Vec2) -> f32 {
 impl HeadState {
     pub fn resting(rest: Vec3, yaw: f32) -> Self {
         Self {
-            rel: rest,
-            vel: Vec3::ZERO,
+            spring: Spring::resting(rest),
             yaw,
             glance: 0.0,
             glance_in: GLANCE_GAP_SECS[0],
@@ -80,7 +120,7 @@ impl HeadState {
     }
 
     pub fn center(&self, base: Vec3) -> Vec3 {
-        base + self.rel
+        base + self.spring.rel()
     }
 
     pub fn yaw(&self) -> f32 {
@@ -93,29 +133,11 @@ impl HeadState {
     }
 
     pub fn update(&mut self, dt: f32, aim: &Aim, rng: &mut Rng) {
-        self.spring(dt, aim);
+        self.spring
+            .update(dt, aim.rest, aim.accel, aim.scale, aim.slack);
         self.turn(dt, aim);
         self.tick_glance(dt, rng);
         self.tick_blink(dt, rng);
-    }
-
-    fn spring(&mut self, dt: f32, aim: &Aim) {
-        let inertia = Vec3::on_ground(aim.accel, 0.0) * (-INERTIA * aim.slack);
-        let pull = (aim.rest - self.rel) * (SPRING_OMEGA * SPRING_OMEGA);
-        let drag = self.vel * (2.0 * SPRING_DAMPING * SPRING_OMEGA);
-        self.vel = self.vel + (pull - drag + inertia) * dt;
-        self.rel = self.rel + self.vel * dt;
-        // Страховка от огромных шагов и мусора на входе
-        let lag = self.rel - aim.rest;
-        let limit = MAX_LAG * aim.scale * aim.slack;
-        if !self.rel.is_finite() || lag.length() > limit {
-            self.rel = if self.rel.is_finite() {
-                aim.rest + lag.normalized() * limit
-            } else {
-                aim.rest
-            };
-            self.vel = Vec3::ZERO;
-        }
     }
 
     fn turn(&mut self, dt: f32, aim: &Aim) {

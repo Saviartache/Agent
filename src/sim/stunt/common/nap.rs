@@ -97,7 +97,7 @@ impl Sim {
         }
     }
 
-    fn nap_lie_pose(&mut self, down: f32) {
+    pub(in crate::sim::stunt) fn nap_lie_pose(&mut self, down: f32) {
         let ease = down * down * (3.0 - 2.0 * down);
         self.antic.lids = self.antic.lids.max(ease);
         self.antic.tuck = ease;

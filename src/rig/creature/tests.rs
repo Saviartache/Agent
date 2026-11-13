@@ -117,6 +117,7 @@ fn parts(pose: &Pose) -> Vec<(Vec3, f32)> {
     all.extend(pose.neck.iter().map(|p| (*p, thick)));
     all.extend(pose.feet.map(|p| (p, thick)));
     all.extend(pose.fore.into_iter().flatten().map(|p| (p, thick)));
+    all.extend(pose.trunk.into_iter().flatten().map(|p| (p, thick)));
     all
 }
 
@@ -662,4 +663,50 @@ fn poses_with_antic_stay_within_extent() {
             }
         }
     }
+}
+
+#[test]
+fn elephant_trunk_hangs_rises_with_the_head_and_lies_on_the_ground() {
+    let tip = |head_pitch, neck_up| {
+        let rig = with_antic(
+            RigKind::Elephant,
+            antic(|a| {
+                a.neck_forward = 12.0 * neck_up / -15.0;
+                a.neck_up = neck_up;
+                a.head_pitch = head_pitch;
+            }),
+            Look::default(),
+        );
+        let pose = rig.goose.pose();
+        assert_eq!(rig.goose.head(), pose.screen(pose.muzzle_tip()));
+        (pose.muzzle_tip() - Vec3::on_ground(START, 0.0)) * (1.0 / SCALE)
+    };
+    let hanging = tip(0.0, 0.0);
+    let raised = tip(1.0, 0.0);
+    let lowered = tip(-0.6, -15.0);
+    assert!(hanging.z > 2.0 && hanging.z < 12.0, "{hanging:?}");
+    assert!(raised.z > 30.0, "{raised:?}");
+    // Так сценки слоника ставят тело к предмету (`TRUNK_REACH`)
+    assert!(
+        lowered.z < 2.0 && (lowered.x - 32.0).abs() < 1.0,
+        "{lowered:?}"
+    );
+}
+
+#[test]
+fn elephant_trunk_tip_swings_behind_when_starting_off() {
+    let mut rig = Rig::of(RigKind::Elephant, 7);
+    rig.run(1.0, DT);
+    let rest = rig.goose.pose().trunk.unwrap();
+    rig.go(230.0 * SCALE, RIGHT);
+    rig.tick(DT);
+    rig.tick(DT);
+    let moving = rig.goose.pose().trunk.unwrap();
+    let lag = |[root, tip]: [Vec3; 2]| (tip - root).x;
+    assert!(
+        lag(moving) < lag(rest) - 0.5,
+        "{} {}",
+        lag(moving),
+        lag(rest)
+    );
 }

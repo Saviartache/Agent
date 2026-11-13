@@ -1,5 +1,5 @@
 //! Контактный лист тела для проверки глазами: ходьба по моментам и жесты × стороны.
-//! `cargo run -p ui-agent --example preview_rig -- <goose|pig> <out.png> [cycle,<жест>,…]`
+//! `cargo run -p ui-agent --example preview_rig -- <goose|pig|elephant> <out.png> [cycle,<жест>,…]`
 //! `cycle` — кадры ходьбы и бега; `mud` — тело в грязи после лужи;
 //! жест — имя встроенного действия (`react`, `sleep`, …);
 //! `antic:поле=число;eyes=crossed;tongue=1;mud=1` — накладка сценки и вид тела по всем сторонам.
@@ -279,7 +279,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let kind = args
         .next()
         .and_then(|name| RigKind::from_name(&name))
-        .ok_or("первый аргумент — тело: goose или pig")?;
+        .ok_or("первый аргумент — тело: goose, pig или elephant")?;
     let path: PathBuf = args.next().ok_or("второй аргумент — путь к PNG")?.into();
     let cells = build(kind, args.next().as_deref())?;
     let (rgb, width, height) = render(&cells)?;

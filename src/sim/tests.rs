@@ -274,6 +274,20 @@ mod goose {
     }
 }
 
+mod elephant {
+    use super::*;
+    use crate::rig::Vec3;
+
+    fn character() -> Character {
+        Character::builtin(RigKind::Elephant).unwrap()
+    }
+
+    include!("scenarios.rs");
+    include!("stunt_tests/common_a.rs");
+    include!("stunt_tests/common_b.rs");
+    include!("stunt_tests/elephant_a.rs");
+}
+
 mod sprite {
     use super::*;
 

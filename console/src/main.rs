@@ -1,5 +1,5 @@
 //! Пакет персонажа: живая консоль, где тело и команды выбираются из меню.
-//! `ui-agent-console [--rig goose|pig] [--pack <папка>] [--grab] [--background]`
+//! `ui-agent-console [--rig goose|pig|elephant] [--pack <папка>] [--grab] [--background]`
 
 // Меню и кадр проверяются тестами на любой машине; агент есть только в Windows
 #[cfg(any(windows, test))]
@@ -58,7 +58,7 @@ fn options() -> Result<(pilot::Source, bool, bool), String> {
                 source = pilot::Source::Pack(args.next().ok_or("--pack требует папку")?.into())
             }
             "--rig" => {
-                let name = args.next().ok_or("--rig требует имя: goose или pig")?;
+                let name = args.next().ok_or("--rig требует имя: goose, pig или elephant")?;
                 let kind = RigKind::from_name(&name).ok_or(format!("нет такого тела: {name}"))?;
                 source = pilot::Source::Builtin(kind);
             }
