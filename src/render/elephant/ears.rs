@@ -2,7 +2,8 @@
 //! доля длиннее. Наружная сторона чуть темнее тела, изнанка — розовая в серой кайме той же
 //! плоскости и видна, пока чаша уха раскрыта к зрителю; к ребру они сужаются вместе.
 
-use super::EAR;
+use super::{Brush, EAR};
+use crate::math::Vec2;
 use crate::render::creature::{Pen, toward_viewer};
 use crate::render::shadow::Oval;
 use crate::render::{Canvas, Color};
@@ -20,10 +21,14 @@ const RIM_SHIFT: f32 = 1.0;
 /// Изнанка видна спереди: проступает, пока нормаль поворачивается к зрителю от и до.
 const INNER_FACING: [f32; 2] = [0.1, 0.6];
 
-pub(super) fn draw(canvas: &mut Canvas, pen: &Pen, ear: &Ear) {
+pub(super) fn draw(canvas: &mut Canvas, pen: &Pen, ear: &Ear, brush: Brush) {
     let lobes = lobes(pen, ear);
+    let (color, grow) = (brush.color(EAR), Vec2::new(brush.grow(), brush.grow()));
     for [oval, _] in &lobes {
-        canvas.fill_ellipse(oval.center, oval.radii, oval.rotation, EAR, 1.0);
+        canvas.fill_ellipse(oval.center, oval.radii + grow, oval.rotation, color, 1.0);
+    }
+    if matches!(brush, Brush::Outline(_)) {
+        return;
     }
     for [_, inner] in &lobes {
         canvas.fill_ellipse(inner.center, inner.radii, inner.rotation, INNER, 1.0);

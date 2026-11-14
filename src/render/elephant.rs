@@ -20,6 +20,8 @@ const TOENAIL: Color = Color(0xC2_CF_DE);
 const TUFT: Color = Color(0x5B_6F_8C);
 /// Веки светлее тела: закрытый глаз не сливается ни с ним, ни с ушами.
 const LID: Color = Color(0xBC_CB_DC);
+/// Общая обводка силуэта: чуть темнее ног, лёгкая.
+const RIM: Color = Color(0x52_65_82);
 
 // Размеры — design px, умножаются на `pose.scale`; доли — от радиуса головы.
 /// Шеи почти нет: голова сидит на теле.
@@ -66,19 +68,43 @@ pub(super) fn draw(canvas: &mut Canvas, pen: &Pen) {
         frame: pen.pose.head_frame(),
     };
     let legs = pen.legs(HIP, LEG_MAX);
-    elephant.legs(canvas, &legs, LegLayer::Back);
+    elephant.outline(canvas, &legs);
+    elephant.legs(canvas, &legs, LegLayer::Back, Brush::Fill);
     elephant.details(canvas, Layer::Back);
-    elephant.body(canvas);
+    elephant.body(canvas, Brush::Fill);
     elephant.details(canvas, Layer::Middle);
-    elephant.legs(canvas, &legs, LegLayer::Middle);
-    elephant.head(canvas);
-    elephant.legs(canvas, &legs, LegLayer::Front);
+    elephant.legs(canvas, &legs, LegLayer::Middle, Brush::Fill);
+    elephant.head(canvas, Brush::Fill);
+    elephant.legs(canvas, &legs, LegLayer::Front, Brush::Fill);
     elephant.details(canvas, Layer::Front);
 }
 
 struct Elephant<'a> {
     pen: &'a Pen<'a>,
     frame: Frame,
+}
+
+/// Чем рисуется часть: своим цветом или обводкой — силуэт шире на `grow` px цветом `RIM`.
+#[derive(Clone, Copy)]
+enum Brush {
+    Fill,
+    Outline(f32),
+}
+
+impl Brush {
+    fn color(self, own: Color) -> Color {
+        match self {
+            Self::Fill => own,
+            Self::Outline(_) => RIM,
+        }
+    }
+
+    fn grow(self) -> f32 {
+        match self {
+            Self::Fill => 0.0,
+            Self::Outline(grow) => grow,
+        }
+    }
 }
 
 /// Слой детали: за телом, между телом и головой, поверх всего серого.
@@ -117,28 +143,48 @@ impl Elephant<'_> {
         self.on_head(EYE_AT, side) * (1.0 - EYE_SINK * away)
     }
 
-    /// Тело и шея; голова тем же цветом — швов нет.
-    fn body(&self, canvas: &mut Canvas) {
-        let (pen, pose) = (self.pen, self.pen.pose);
-        let body = pen.body();
-        canvas.fill_ellipse(body.center, body.radii, body.rotation, HIDE, 1.0);
-        let radius = NECK_RADIUS * pose.scale;
-        for i in 1..NECK_POINTS {
-            let (a, b) = (pen.at(pose.neck[i - 1]), pen.at(pose.neck[i]));
-            canvas.fill_capsule(a, b, radius, radius, HIDE, 1.0);
+    /// Общая лёгкая обводка, как у гуся: весь серый силуэт шире под всем остальным —
+    /// внутренних швов между частями нет.
+    fn outline(&self, canvas: &mut Canvas, legs: &[Leg]) {
+        let brush = Brush::Outline(OUTLINE_WIDTH * self.pen.pose.scale);
+        for layer in [LegLayer::Back, LegLayer::Middle, LegLayer::Front] {
+            self.legs(canvas, legs, layer, brush);
+        }
+        self.body(canvas, brush);
+        self.head(canvas, brush);
+        self.trunk(canvas, brush);
+        self.tail(canvas, brush);
+        for ear in self.pen.pose.ears.iter().flatten() {
+            ears::draw(canvas, self.pen, ear, brush);
         }
     }
 
-    fn head(&self, canvas: &mut Canvas) {
+    /// Тело и шея; голова тем же цветом — швов нет.
+    fn body(&self, canvas: &mut Canvas, brush: Brush) {
+        let (pen, pose) = (self.pen, self.pen.pose);
+        let (color, grow) = (brush.color(HIDE), brush.grow());
+        let body = pen.body();
+        let radii = body.radii + Vec2::new(grow, grow);
+        canvas.fill_ellipse(body.center, radii, body.rotation, color, 1.0);
+        let radius = NECK_RADIUS * pose.scale + grow;
+        for i in 1..NECK_POINTS {
+            let (a, b) = (pen.at(pose.neck[i - 1]), pen.at(pose.neck[i]));
+            canvas.fill_capsule(a, b, radius, radius, color, 1.0);
+        }
+    }
+
+    fn head(&self, canvas: &mut Canvas, brush: Brush) {
         let (pen, head) = (self.pen, &self.pen.pose.head);
-        canvas.fill_circle(pen.at(head.center), head.radius, HIDE, 1.0);
+        let radius = head.radius + brush.grow();
+        canvas.fill_circle(pen.at(head.center), radius, brush.color(HIDE), 1.0);
     }
 
     /// Ноги слоя от дальней к ближней; ногти — на носке стоящей ноги, со стороны зрителя.
-    fn legs(&self, canvas: &mut Canvas, legs: &[Leg], layer: LegLayer) {
+    fn legs(&self, canvas: &mut Canvas, legs: &[Leg], layer: LegLayer, brush: Brush) {
         let (pen, pose) = (self.pen, self.pen.pose);
         // На боку и поджатой ногой ногтей не видно
         let upright = pose.body.frame().up.z > 0.7 && pose.tuck <= 0.0;
+        let (color, grow) = (brush.color(LEG), brush.grow());
         let ahead = Vec3::on_ground(pose.body.forward, 0.0);
         let side = Vec3::new(-ahead.y, ahead.x, 0.0);
         let nails =
@@ -146,7 +192,11 @@ impl Elephant<'_> {
         for leg in legs.iter().filter(|leg| leg.layer == layer) {
             let (a, k) = (pen.at(leg.sole), leg.size);
             let radius = LEG_RADII[0] * k;
-            canvas.fill_capsule(a, pen.at(leg.top), radius, LEG_RADII[1] * k, LEG, 1.0);
+            let top = LEG_RADII[1] * k + grow;
+            canvas.fill_capsule(a, pen.at(leg.top), radius + grow, top, color, 1.0);
+            if matches!(brush, Brush::Outline(_)) {
+                continue;
+            }
             for nail in nails.into_iter().filter(|n| upright && faces_viewer(*n)) {
                 let at = pen.at(leg.sole + nail * radius);
                 canvas.fill_circle(at, TOENAIL_RADIUS * k, TOENAIL, 1.0);
@@ -158,7 +208,7 @@ impl Elephant<'_> {
     fn details(&self, canvas: &mut Canvas, layer: Layer) {
         let tail_front = self.pen.near_side(self.tail_points()[0]);
         if layer == [Layer::Back, Layer::Front][usize::from(tail_front)] {
-            self.tail(canvas);
+            self.tail(canvas, Brush::Fill);
         }
         let mut parts = self.head_parts();
         parts.sort_by(|a, b| a.depth.total_cmp(&b.depth));
@@ -166,12 +216,12 @@ impl Elephant<'_> {
             match part.kind {
                 PartKind::Ear(i) => {
                     if let Some(ears) = &self.pen.pose.ears {
-                        ears::draw(canvas, self.pen, &ears[i]);
+                        ears::draw(canvas, self.pen, &ears[i], Brush::Fill);
                     }
                 }
                 PartKind::Trunk => {
                     self.mouth(canvas);
-                    self.trunk(canvas);
+                    self.trunk(canvas, Brush::Fill);
                 }
                 PartKind::Eyes => {
                     for side in SIDES.into_iter().filter(|side| self.eye_front(*side)) {
@@ -240,16 +290,17 @@ impl Elephant<'_> {
         TAIL.map(|[b, u]| body.center + back * b + up * u)
     }
 
-    fn tail(&self, canvas: &mut Canvas) {
+    fn tail(&self, canvas: &mut Canvas, brush: Brush) {
         let pen = self.pen;
         let [root, tip] = self.tail_points().map(|p| pen.at(p));
-        let s = pen.pose.scale;
-        canvas.fill_capsule(root, tip, TAIL_RADIUS * s, TAIL_RADIUS * s, EAR, 1.0);
-        canvas.fill_circle(tip, TUFT_RADIUS * s, TUFT, 1.0);
+        let (s, grow) = (pen.pose.scale, brush.grow());
+        let radius = TAIL_RADIUS * s + grow;
+        canvas.fill_capsule(root, tip, radius, radius, brush.color(EAR), 1.0);
+        canvas.fill_circle(tip, TUFT_RADIUS * s + grow, brush.color(TUFT), 1.0);
     }
 
     /// Хобот выходит из морды вперёд и гнётся к кончику, который живёт на пружине.
-    fn trunk(&self, canvas: &mut Canvas) {
+    fn trunk(&self, canvas: &mut Canvas, brush: Brush) {
         let (pen, pose) = (self.pen, self.pen.pose);
         let Some([root, tip]) = pose.trunk else {
             return;
@@ -262,10 +313,11 @@ impl Elephant<'_> {
         };
         let radius = |i: usize| {
             let t = i as f32 / last;
-            (TRUNK_RADII[0] + (TRUNK_RADII[1] - TRUNK_RADII[0]) * t) * pose.scale
+            (TRUNK_RADII[0] + (TRUNK_RADII[1] - TRUNK_RADII[0]) * t) * pose.scale + brush.grow()
         };
+        let color = brush.color(HIDE);
         for i in 1..TRUNK_POINTS {
-            canvas.fill_capsule(point(i - 1), point(i), radius(i - 1), radius(i), HIDE, 1.0);
+            canvas.fill_capsule(point(i - 1), point(i), radius(i - 1), radius(i), color, 1.0);
         }
     }
 
