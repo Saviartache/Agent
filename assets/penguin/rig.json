@@ -29,8 +29,8 @@
         { "control": "wings", "turn": [-74.48, 0, 0] },
         { "control": "flap", "turn": [-28.65, 0, 0] }
       ] },
-    { "name": "foot_hind_l", "parent": "root", "at": [2, -3.6, 0] },
-    { "name": "foot_hind_r", "parent": "root", "at": [2, 3.6, 0] }
+    { "name": "foot_hind_l", "parent": "root", "at": [-1.5, -3.6, 0] },
+    { "name": "foot_hind_r", "parent": "root", "at": [-1.5, 3.6, 0] }
   ],
   "parts": [
     { "bone": "foot_hind_l", "color": "orange", "shape": { "disc": { "at": [1.2, 0, 0], "axes": [[2.8, 0, 0], [0, 1.8, 0]] } } },

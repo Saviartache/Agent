@@ -221,7 +221,7 @@ const PENGUIN: Build = Build {
     muzzle: 4.5,
     print: 2.4,
     hind: Pair {
-        along: 2.0,
+        along: -1.5,
         side: 3.6,
     },
     fore: None,
