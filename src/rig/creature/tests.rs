@@ -521,8 +521,9 @@ fn eyes_blink_now_and_then() {
 fn muzzle_tip_is_ahead_of_the_head_on_screen() {
     let rig = Rig::new();
     let pose = rig.goose.pose();
-    assert!(rig.goose.head().x > pose.head.center.x);
-    assert!(rig.goose.head().y < START.y);
+    let tip = pose.screen(pose.muzzle_tip());
+    assert!(tip.x > pose.head.center.x);
+    assert!(tip.y < START.y);
 }
 
 fn with_antic(kind: RigKind, antic: Antic, look: Look) -> Rig {
@@ -708,7 +709,6 @@ fn elephant_trunk_hangs_rises_with_the_head_and_lies_on_the_ground() {
             Look::default(),
         );
         let pose = rig.goose.pose();
-        assert_eq!(rig.goose.head(), pose.screen(pose.muzzle_tip()));
         (pose.muzzle_tip() - Vec3::on_ground(START, 0.0)) * (1.0 / SCALE)
     };
     let hanging = tip(0.0, 0.0);

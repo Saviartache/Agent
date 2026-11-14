@@ -1,5 +1,7 @@
 //! Общий «пиксельный» стиль: всё на рабочем столе рисуется лёгкой мозаикой на одной сетке.
 
+use std::ops::Range;
+
 use super::Canvas;
 use crate::math::Vec2;
 
@@ -25,6 +27,16 @@ pub fn pixelate(canvas: &mut Canvas, origin: Vec2, scale: f32) {
     }
     let cell = cell(scale);
     canvas.pixelate(cell, phase(origin, cell), STRENGTH);
+}
+
+/// Та же мозаика на той же сетке, но только там, где нарисовано: пиксели `within`
+/// по `x` и `y`.
+pub fn pixelate_within(canvas: &mut Canvas, origin: Vec2, scale: f32, within: [Range<usize>; 2]) {
+    if !(origin.x.is_finite() && origin.y.is_finite()) {
+        return;
+    }
+    let cell = cell(scale);
+    canvas.pixelate_within(cell, phase(origin, cell), STRENGTH, within);
 }
 
 /// Ретро вместо мозаики для того, что лежит на земле: целые клетки той же мировой сетки,

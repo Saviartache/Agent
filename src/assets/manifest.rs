@@ -14,6 +14,8 @@ pub const MAX_MANIFEST_BYTES: usize = 1 << 20;
 pub const MAX_ANIMATIONS: usize = 256;
 pub const MAX_ACTIONS: usize = 4096;
 pub const MAX_FRAMES: u32 = 256;
+/// Клип тела не длиннее десяти минут.
+const MAX_CLIP_MS: u32 = 600_000;
 const MAX_SCALE: f32 = 16.0;
 
 #[derive(Deserialize)]
@@ -25,9 +27,9 @@ pub struct Manifest {
     /// `rig`, прошедший проверку.
     #[serde(skip)]
     pub kind: Option<RigKind>,
-    /// У тела не используется, но обязателен схемой.
-    pub frame_size: [u32; 2],
-    pub anchor: [f32; 2],
+    /// Кадр и точка опоры в нём — у спрайтового набора; у тела кадров нет.
+    pub frame_size: Option<[u32; 2]>,
+    pub anchor: Option<[f32; 2]>,
     #[serde(default = "one")]
     pub scale: f32,
     pub animations: BTreeMap<String, Animation>,
@@ -43,7 +45,10 @@ pub struct Manifest {
 pub struct Animation {
     /// Обязателен у спрайтового набора, запрещён у тела.
     pub file: Option<String>,
-    pub frames: Frames,
+    /// Кадры листа — у спрайтового набора.
+    pub frames: Option<Frames>,
+    /// Длина клипа — у тела: жест читает лишь долю прошедшего времени.
+    pub duration_ms: Option<u32>,
     #[serde(default, rename = "loop")]
     pub looping: bool,
     pub anchor: Option<[f32; 2]>,
@@ -108,8 +113,17 @@ pub fn parse(text: &str) -> Result<Manifest, AgentError> {
         return Err(fail("файл больше 1 МиБ"));
     }
     let mut manifest: Manifest = serde_json::from_str(text).map_err(fail)?;
-    if manifest.frame_size.contains(&0) {
-        return Err(fail("frame_size не может быть нулевым"));
+    manifest.kind = manifest.rig.as_deref().map(rig_kind).transpose()?;
+    match (manifest.kind, manifest.frame_size, manifest.anchor) {
+        (Some(_), None, None) => {}
+        (Some(_), ..) => return Err(fail("у набора с телом нет frame_size и anchor: кадров нет")),
+        (None, Some(size), Some(anchor)) => {
+            if size.contains(&0) {
+                return Err(fail("frame_size не может быть нулевым"));
+            }
+            check_point("anchor", anchor)?;
+        }
+        (None, ..) => return Err(fail("у спрайтового набора обязательны frame_size и anchor")),
     }
     if !(manifest.scale > 0.0 && manifest.scale <= MAX_SCALE) {
         return Err(fail("scale должен быть в (0, 16]"));
@@ -120,8 +134,6 @@ pub fn parse(text: &str) -> Result<Manifest, AgentError> {
     if manifest.actions.len() > MAX_ACTIONS {
         return Err(fail("действий больше 4096"));
     }
-    check_point("anchor", manifest.anchor)?;
-    manifest.kind = manifest.rig.as_deref().map(rig_kind).transpose()?;
     for (name, animation) in &manifest.animations {
         check_animation(manifest.kind, animation)
             .map_err(|reason| fail(format!("анимация «{name}»: {reason}")))?;
@@ -139,14 +151,29 @@ fn rig_kind(name: &str) -> Result<RigKind, AgentError> {
     })
 }
 
-/// Спрайтовой анимации нужен лист, анимации тела — только время.
+/// Спрайтовой анимации нужны лист и кадры, анимации тела — только время.
 fn check_animation(kind: Option<RigKind>, animation: &Animation) -> Result<(), &'static str> {
-    match (&animation.file, kind) {
-        (Some(file), None) => check_path(file),
-        (None, None) => Err("у спрайтового набора обязателен file"),
-        (Some(_), Some(_)) => Err("у набора с телом file не нужен: листов нет"),
-        (None, Some(_)) if matches!(animation.frames, Frames::Grid(_)) => Ok(()),
-        (None, Some(_)) => Err("у набора с телом кадры задаются сеткой {count, duration_ms}"),
+    let Animation {
+        file,
+        frames,
+        duration_ms,
+        anchor,
+        events,
+        ..
+    } = animation;
+    if kind.is_none() {
+        return match (file, frames, duration_ms) {
+            (Some(file), Some(_), None) => check_path(file),
+            (_, _, Some(_)) => Err("duration_ms — только у набора с телом"),
+            _ => Err("у спрайтового набора обязательны file и frames"),
+        };
+    }
+    if file.is_some() || frames.is_some() || anchor.is_some() || !events.is_empty() {
+        return Err("у набора с телом нет листов: задаётся только duration_ms и loop");
+    }
+    match duration_ms {
+        Some(ms) if (1..=MAX_CLIP_MS).contains(ms) => Ok(()),
+        _ => Err("duration_ms должен быть от 1 до 600000"),
     }
 }
 

@@ -1,5 +1,4 @@
-//! Точка тела: `x`, `y` — земля мира, `z` — высота над землёй. На экране
-//! точка рисуется в `(x, y − z)`.
+//! Точка тела: `x`, `y` — земля мира, `z` — высота над землёй.
 
 use std::ops::{Add, Mul, Sub};
 
@@ -25,11 +24,6 @@ impl Vec3 {
 
     pub fn ground(self) -> Vec2 {
         Vec2::new(self.x, self.y)
-    }
-
-    /// Положение на экране.
-    pub fn screen(self) -> Vec2 {
-        Vec2::new(self.x, self.y - self.z)
     }
 
     pub fn dot(self, other: Self) -> f32 {
@@ -88,7 +82,7 @@ impl Mul<f32> for Vec3 {
 }
 
 /// Оси тела в мире: вперёд, вправо (по ходу) и вверх.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Frame {
     pub forward: Vec3,
     pub right: Vec3,
@@ -96,6 +90,12 @@ pub struct Frame {
 }
 
 impl Frame {
+    pub const IDENTITY: Self = Self {
+        forward: Vec3::new(1.0, 0.0, 0.0),
+        right: Vec3::new(0.0, 1.0, 0.0),
+        up: Vec3::new(0.0, 0.0, 1.0),
+    };
+
     /// `yaw` — угол хода на земле, `pitch` — подъём носа; `roll` крутит вокруг оси вперёд.
     pub fn new(yaw: f32, pitch: f32, roll: f32) -> Self {
         let (sy, cy) = yaw.sin_cos();
@@ -132,6 +132,20 @@ impl Frame {
 
     pub fn point(&self, origin: Vec3, forward: f32, right: f32, up: f32) -> Vec3 {
         origin + self.forward * forward + self.right * right + self.up * up
+    }
+
+    /// Вектор из этих осей (`x` — вперёд, `y` — вправо, `z` — вверх) в мир.
+    pub fn rotate(&self, local: Vec3) -> Vec3 {
+        self.forward * local.x + self.right * local.y + self.up * local.z
+    }
+
+    /// Оси `local`, заданные в этих осях, — в мире.
+    pub fn compose(&self, local: &Self) -> Self {
+        Self {
+            forward: self.rotate(local.forward),
+            right: self.rotate(local.right),
+            up: self.rotate(local.up),
+        }
     }
 }
 
@@ -170,6 +184,9 @@ mod tests {
     fn right_of_east_points_down_the_screen() {
         let frame = Frame::new(0.0, 0.0, 0.0);
         assert!(frame.right.y > 0.99);
-        assert_eq!(Vec3::new(1.0, 5.0, 2.0).screen(), Vec2::new(1.0, 3.0));
+        assert_eq!(
+            Vec3::on_ground(Vec2::new(1.0, 5.0), 2.0).ground(),
+            Vec2::new(1.0, 5.0)
+        );
     }
 }

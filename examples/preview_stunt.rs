@@ -11,7 +11,7 @@ use ui_agent::{
     AgentConfig, AgentEvent, Character, Command, CursorGrabConfig, Stunt,
     math::{Bounds, Rect, Vec2},
     render::{
-        Canvas, creature,
+        Canvas, Figure,
         scene::{self, CharacterView},
     },
     rig::RigKind,
@@ -93,13 +93,19 @@ fn shoot(sim: &Sim, crop: Rect, cursor: Vec2) -> (Vec<u32>, usize, usize) {
     let mut body = vec![0u32; w * h];
     let ui = sim.ui_scale();
     if let Some(mut canvas) = Canvas::new(&mut ground, w, w as u32, h as u32) {
-        scene::draw_effects(&mut canvas, crop.min, &sim.effects(), ui);
+        scene::draw_effects(
+            &mut canvas,
+            crop.min,
+            &sim.effects(),
+            ui,
+            &mut Figure::default(),
+        );
     }
-    if let (Some(CharacterView::Creature { pose, .. }), Some(mut canvas)) = (
+    if let (Some(CharacterView::Creature { pose, skeleton, .. }), Some(mut canvas)) = (
         sim.character(),
         Canvas::new(&mut body, w, w as u32, h as u32),
     ) {
-        creature::draw(&mut canvas, crop.min, pose);
+        Figure::default().draw(&mut canvas, crop.min, pose, skeleton);
         if let Some(screen) = sim.character_clip() {
             canvas.clear_outside(Rect::new(screen.min - crop.min, screen.max - crop.min));
         }

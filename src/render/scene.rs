@@ -1,8 +1,10 @@
 //! Чистая отрисовка сцены на холст: персонаж, следы с частицами и карточка.
 //! Координаты мира — физические пиксели; холст знает лишь свой левый верхний угол.
 
+use std::sync::Arc;
+
 use super::shadow::{self, Oval};
-use super::{Canvas, Color, Sprite, creature, marks, pixel, props, puddle};
+use super::{Canvas, Color, Figure, Sprite, marks, pixel, props, puddle};
 use crate::animation::SheetId;
 use crate::command::Tone;
 use crate::effects::{
@@ -13,7 +15,7 @@ use crate::effects::{
     props::Props,
 };
 use crate::math::{Rect, Vec2};
-use crate::rig::{Creature, Pose};
+use crate::rig::{Creature, Pose, Skeleton};
 
 /// Окно в целых пикселях виртуального экрана.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -46,6 +48,8 @@ pub enum CharacterView<'a> {
     Creature {
         pose: &'a Pose,
         extent: f32,
+        /// Скелет набора: по нему тело рисуется.
+        skeleton: &'a Arc<Skeleton>,
     },
 }
 
@@ -127,8 +131,9 @@ pub struct Effects<'a> {
     pub props: &'a Props,
     /// Линия, которую гусь рисует клювом.
     pub scribble: &'a Footprints,
-    /// Гусята: позы малышей, идущих за гусем.
+    /// Гусята: позы малышей, идущих за гусем, и скелет, по которому они рисуются.
     pub flock: &'a [Pose],
+    pub flock_rig: Option<&'a Arc<Skeleton>>,
 }
 
 /// Охват эффектов; при разбросе больше предела окно держится у самого свежего.
@@ -143,6 +148,7 @@ pub fn effects_rect(effects: &Effects<'_>, ui_scale: f32) -> Option<Rect> {
         props,
         scribble,
         flock,
+        flock_rig: _,
     } = *effects;
     let reach = (print_radius + EDGE) * ui_scale;
     // Мозаика размазывает край на клетку
@@ -176,8 +182,15 @@ pub fn effects_rect(effects: &Effects<'_>, ui_scale: f32) -> Option<Rect> {
     Some(Rect::new(Vec2::new(min_x, min_y), Vec2::new(max_x, max_y)))
 }
 
-/// `origin` — мировая точка левого верхнего угла холста.
-pub fn draw_effects(canvas: &mut Canvas, origin: Vec2, effects: &Effects<'_>, ui_scale: f32) {
+/// `origin` — мировая точка левого верхнего угла холста; `figure` рисует гусят и живёт
+/// между кадрами.
+pub fn draw_effects(
+    canvas: &mut Canvas,
+    origin: Vec2,
+    effects: &Effects<'_>,
+    ui_scale: f32,
+    figure: &mut Figure,
+) {
     // Лужа и грязь лежат на земле ниже всего
     let cell = pixel::cell(ui_scale);
     puddle::draw(canvas, origin, effects.mud, cell);
@@ -218,8 +231,12 @@ pub fn draw_effects(canvas: &mut Canvas, origin: Vec2, effects: &Effects<'_>, ui
         );
     }
     props::draw(canvas, origin, effects.props);
-    for pose in effects.flock {
-        creature::paint(canvas, origin, pose);
+    for (pose, rig) in effects
+        .flock
+        .iter()
+        .zip(effects.flock_rig.into_iter().cycle())
+    {
+        figure.paint(canvas, origin, pose, rig);
     }
     for particle in effects.particles.iter() {
         marks::draw(canvas, origin, &particle);
@@ -539,6 +556,7 @@ mod tests {
                 props: &self.props,
                 scribble: &self.scribble,
                 flock: &[],
+                flock_rig: None,
             }
         }
     }
@@ -600,7 +618,7 @@ mod tests {
             let mut pixels = buffer(400);
             let mut canvas = canvas(&mut pixels, 400, 400);
             let from = Vec2::new(rect.x as f32, rect.y as f32);
-            draw_effects(&mut canvas, from, &all, 1.0);
+            draw_effects(&mut canvas, from, &all, 1.0, &mut Figure::default());
             let drawn = (0..rect.height as i32)
                 .flat_map(|y| (0..rect.width as i32).map(move |x| (x, y)))
                 .filter(|&(x, y)| canvas.alpha_at(x, y) != 0)

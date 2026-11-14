@@ -389,6 +389,7 @@ mod tests {
         mud::Mud,
         particles::{Burst, Particles},
     };
+    use crate::render::Figure;
     use crate::render::scene::{Effects, draw_effects, effects_rect, enclosing};
     use crate::rng::Rng;
 
@@ -425,6 +426,7 @@ mod tests {
             props,
             scribble: &parts.0,
             flock: &[],
+            flock_rig: None,
         }
     }
 
@@ -441,7 +443,7 @@ mod tests {
         let mut pixels = vec![0u32; SIDE * SIDE];
         let mut canvas = Canvas::new(&mut pixels, SIDE, SIDE as u32, SIDE as u32).unwrap();
         let from = Vec2::new((rect.x - PAD) as f32, (rect.y - PAD) as f32);
-        draw_effects(&mut canvas, from, &all, ui);
+        draw_effects(&mut canvas, from, &all, ui, &mut Figure::default());
         let inside = |v: i32, len: u32| (PAD..PAD + len as i32).contains(&v);
         let leaked = (0..SIDE * SIDE)
             .filter(|i| {
@@ -517,7 +519,7 @@ mod tests {
         let all = effects(&props, &particles, &parts);
         let mut pixels = vec![0u32; 64 * 64];
         let mut canvas = Canvas::new(&mut pixels, 64, 64, 64).unwrap();
-        draw_effects(&mut canvas, Vec2::ZERO, &all, 2.0);
+        draw_effects(&mut canvas, Vec2::ZERO, &all, 2.0, &mut Figure::default());
     }
 
     #[test]

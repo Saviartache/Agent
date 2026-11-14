@@ -125,6 +125,12 @@ impl Pose {
         self.head.center + self.head_frame().forward * reach
     }
 
+    /// Во сколько раз полуоси тела вытянуты против сложения вида: сжатие сценки, раздутость.
+    pub fn body_stretch(&self) -> [f32; 3] {
+        let rest = self.kind.build().body_radii;
+        std::array::from_fn(|i| self.body.radii[i] / (rest[i] * self.scale))
+    }
+
     /// Насколько тело выше стойки: прыжок, полёт; px.
     pub fn rise(&self) -> f32 {
         (self.body.center.z - self.kind.build().stand_z * self.scale).max(0.0)

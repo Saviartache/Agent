@@ -1,0 +1,72 @@
+{
+  "palette": {
+    "back": "2E3445",
+    "flipper": "454E63",
+    "white": "FFFFFF",
+    "orange": "FF9A1F",
+    "ink": "1B1F29",
+    "mouth": "8E3E4A",
+    "tongue": "E85F7A",
+    "mud": "7A5534"
+  },
+  "controls": ["lids", "eyes_crossed", "eyes_wide", "tongue", "beak_open", "gape", "snout_mud", "wings", "flap"],
+  "bones": [
+    { "name": "root", "ground": true },
+    { "name": "body", "parent": "root", "at": [0, 0, 13], "ground": true },
+    { "name": "chest", "parent": "body", "turn": [0, -90, 0], "ground": true },
+    { "name": "head", "parent": "root", "at": [1.6, 0, 27] },
+    { "name": "beak_upper", "parent": "head", "at": [5.4, 0, 0],
+      "drivers": [ { "control": "gape", "turn": [0, 57.2958, 0] } ] },
+    { "name": "beak_lower", "parent": "head", "at": [5.4, 0, 0],
+      "drivers": [ { "control": "gape", "turn": [0, -57.2958, 0] } ] },
+    { "name": "flipper_l", "parent": "body", "at": [5.4, -7.225, 2.8], "turn": [11.46, 0, 0],
+      "drivers": [
+        { "control": "wings", "turn": [74.48, 0, 0] },
+        { "control": "flap", "turn": [28.65, 0, 0] }
+      ] },
+    { "name": "flipper_r", "parent": "body", "at": [5.4, 7.225, 2.8], "turn": [-11.46, 0, 0],
+      "drivers": [
+        { "control": "wings", "turn": [-74.48, 0, 0] },
+        { "control": "flap", "turn": [-28.65, 0, 0] }
+      ] },
+    { "name": "foot_hind_l", "parent": "root", "at": [2, -3.6, 0] },
+    { "name": "foot_hind_r", "parent": "root", "at": [2, 3.6, 0] }
+  ],
+  "parts": [
+    { "bone": "foot_hind_l", "color": "orange", "shape": { "disc": { "at": [1.2, 0, 0], "axes": [[2.8, 0, 0], [0, 1.8, 0]] } } },
+    { "bone": "foot_hind_r", "color": "orange", "shape": { "disc": { "at": [1.2, 0, 0], "axes": [[2.8, 0, 0], [0, 1.8, 0]] } } },
+
+    { "bone": "body", "color": "back", "shape": { "ellipsoid": { "radii": [12, 8.5, 8] } } },
+    { "bone": "body", "color": "back", "shape": { "chain": { "from": [9, 0, 0], "through": ["head"], "radii": [5, 5] } } },
+    { "bone": "head", "color": "back", "shape": { "ball": { "radius": 6 } } },
+    { "bone": "chest", "color": "white", "lift": 5, "behind": true, "shape": { "ellipsoid": { "at": [3.2, 0, 0], "radii": [4.4, 6.63, 9.6] } } },
+
+    { "bone": "flipper_l", "color": "flipper", "shape": { "capsule": { "from": [0, 0, 0], "to": [-10.2, 0, 0], "radii": [2.6, 1.3] } } },
+    { "bone": "flipper_r", "color": "flipper", "shape": { "capsule": { "from": [0, 0, 0], "to": [-10.2, 0, 0], "radii": [2.6, 1.3] } } },
+
+    { "bone": "head", "color": "orange", "hide": ["beak_open"], "shape": { "capsule": { "from": [5.4, 0, 0], "to": [8.7, 0, 0], "radii": [2.3, 1.1] } } },
+    { "bone": "beak_lower", "color": "orange", "show": ["beak_open"], "shape": { "capsule": { "from": [0, 0, 0], "to": [3.3, 0, 0], "radii": [1.8, 0.9] } } },
+    { "bone": "head", "color": "mouth", "show": ["beak_open"], "shape": { "capsule": { "from": [5.4, 0, 0], "to": [8.2, 0, 0], "radii": [1.8, 0.9] } } },
+    { "bone": "beak_upper", "color": "orange", "show": ["beak_open"], "shape": { "capsule": { "from": [0, 0, 0], "to": [3.3, 0, 0], "radii": [1.8, 0.9] } } },
+    { "bone": "beak_lower", "color": "tongue", "show": ["tongue"], "shape": { "capsule": { "from": [1.98, 0, 0], "to": [1.98, 3.3, -2.7], "radii": [1.3, 1] } } },
+    { "bone": "head", "color": "mud", "show": ["snout_mud"], "hide": ["beak_open"], "shape": { "capsule": { "from": [6.885, 0, 0], "to": [8.7, 0, 0], "radii": [1.265, 1.265] } } },
+
+    { "bone": "head", "color": "white", "facing": [3, -3, 1.8], "behind": true, "lift": 4, "hide": ["lids", "eyes_wide"], "shape": { "ball": { "radius": 1.9 } } },
+    { "bone": "head", "color": "white", "facing": [3, 3, 1.8], "behind": true, "lift": 4, "hide": ["lids", "eyes_wide"], "shape": { "ball": { "radius": 1.9 } } },
+    { "bone": "head", "color": "white", "facing": [3, -3, 1.8], "behind": true, "lift": 4, "show": ["eyes_wide"], "hide": ["lids"], "shape": { "ball": { "radius": 2.6 } } },
+    { "bone": "head", "color": "white", "facing": [3, 3, 1.8], "behind": true, "lift": 4, "show": ["eyes_wide"], "hide": ["lids"], "shape": { "ball": { "radius": 2.6 } } },
+    { "bone": "head", "color": "ink", "facing": [3, -3, 1.8], "behind": true, "lift": 4, "hide": ["lids", "eyes_crossed"], "shape": { "ball": { "at": [0, 0, 2.6], "radius": 1.1 } } },
+    { "bone": "head", "color": "ink", "facing": [3, 3, 1.8], "behind": true, "lift": 4, "hide": ["lids", "eyes_crossed"], "shape": { "ball": { "at": [0, 0, 2.6], "radius": 1.1 } } },
+    { "bone": "head", "color": "white", "facing": [3, -3, 1.8], "behind": true, "lift": 4, "show": ["lids"], "shape": { "capsule": { "from": [-1.6, 0, 0], "to": [1.6, 0, 0], "radii": [0.8, 0.8] } } },
+    { "bone": "head", "color": "white", "facing": [3, 3, 1.8], "behind": true, "lift": 4, "show": ["lids"], "shape": { "capsule": { "from": [-1.6, 0, 0], "to": [1.6, 0, 0], "radii": [0.8, 0.8] } } },
+    { "bone": "head", "color": "ink", "facing": [3, -3, 1.8], "behind": true, "lift": 4, "show": ["eyes_crossed"], "hide": ["lids"], "shape": { "capsule": { "from": [-1.2, -1.2, 2.6], "to": [1.2, 1.2, 2.6], "radii": [0.55, 0.55] } } },
+    { "bone": "head", "color": "ink", "facing": [3, -3, 1.8], "behind": true, "lift": 4, "show": ["eyes_crossed"], "hide": ["lids"], "shape": { "capsule": { "from": [-1.2, 1.2, 2.6], "to": [1.2, -1.2, 2.6], "radii": [0.55, 0.55] } } },
+    { "bone": "head", "color": "ink", "facing": [3, 3, 1.8], "behind": true, "lift": 4, "show": ["eyes_crossed"], "hide": ["lids"], "shape": { "capsule": { "from": [-1.2, -1.2, 2.6], "to": [1.2, 1.2, 2.6], "radii": [0.55, 0.55] } } },
+    { "bone": "head", "color": "ink", "facing": [3, 3, 1.8], "behind": true, "lift": 4, "show": ["eyes_crossed"], "hide": ["lids"], "shape": { "capsule": { "from": [-1.2, 1.2, 2.6], "to": [1.2, -1.2, 2.6], "radii": [0.55, 0.55] } } }
+  ],
+  "sockets": [
+    { "name": "muzzle", "bone": "head", "at": [8.7, 0, 0] },
+    { "name": "head_top", "bone": "head", "at": [0, 0, 6] },
+    { "name": "back", "bone": "body", "at": [0, 0, 8] }
+  ]
+}

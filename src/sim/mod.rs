@@ -23,6 +23,7 @@ use pointer::Press;
 use stunt::Act;
 use trail::Trail;
 
+use self::rig::Limbs;
 use crate::action::ActionId;
 use crate::assets::Character;
 use crate::behavior::{Brain, BrainEvent, CursorGrab, Directive, Facing, Intent, Permissions};
@@ -116,6 +117,8 @@ pub struct Sim {
     anim: Animator,
     /// Есть у персонажа с процедурным телом; у спрайтового — `None`.
     rig: Option<Creature>,
+    /// Кости тела по его позе: точки крепления.
+    limbs: Option<Limbs>,
     footfalls: Vec<Footfall>,
     footprints: Footprints,
     particles: Particles,
@@ -215,9 +218,14 @@ impl Sim {
         let rig = character
             .rig()
             .map(|kind| Creature::new(kind, body.pos, body.heading, ui * character.scale()));
+        let limbs = rig
+            .as_ref()
+            .zip(character.skeleton())
+            .map(|(rig, skeleton)| Limbs::new(skeleton, rig.pose()));
         let mut rng = Rng::new(seed ^ RNG_SALT);
         let stunt_gap = character.behavior().stunt_gap_secs;
         Self {
+            limbs,
             leaves: Leaves::new(LEAF_CAP),
             mud: Mud::new(PUDDLE_CAP),
             mud_prints: Footprints::new(MUD_PRINT_CAP, MUD_PRINT_SECS, FOOTPRINT_SPACING * ui),
@@ -380,6 +388,8 @@ impl Sim {
             props: &self.props,
             scribble: &self.scribble,
             flock: &self.flock,
+            // Гусята — того же вида, что и гусь, за которым идут
+            flock_rig: self.character.skeleton(),
         }
     }
 
@@ -396,10 +406,11 @@ impl Sim {
         if self.brain.intent() == Intent::Absent {
             return None;
         }
-        if let Some(rig) = &self.rig {
+        if let (Some(rig), Some(skeleton)) = (&self.rig, self.character.skeleton()) {
             return Some(CharacterView::Creature {
                 pose: rig.pose(),
                 extent: Creature::extent(self.sprite),
+                skeleton,
             });
         }
         let clip = self.character.clip(self.anim.clip());
@@ -459,8 +470,8 @@ impl Sim {
 
     /// Кончик клюва или рыла; у спрайта — над головой, на уровне верха кадра.
     fn head(&self) -> Vec2 {
-        if let Some(rig) = &self.rig {
-            return rig.head();
+        if let Some((ground, height)) = self.muzzle() {
+            return ground - Vec2::new(0.0, height);
         }
         let anchor = self.character.clip(self.anim.clip()).anchor;
         self.body.pos - Vec2::new(0.0, anchor.y * self.sprite)
@@ -468,14 +479,13 @@ impl Sim {
 
     /// Высота кончика клюва или рыла над землёй, физические px; у спрайта — 0.
     fn muzzle_height(&self) -> f32 {
-        self.rig
-            .as_ref()
-            .map_or(0.0, |rig| rig.pose().muzzle_tip().z)
+        self.muzzle().map_or(0.0, |(_, height)| height)
     }
 
     /// Точка на земле под кончиком клюва или рыла.
     fn muzzle_ground(&self) -> Vec2 {
-        self.head() + Vec2::new(0.0, self.muzzle_height())
+        self.muzzle()
+            .map_or_else(|| self.head(), |(ground, _)| ground)
     }
 
     /// Куда смотреть и где стоять, чтобы кончик клюва или рыла с вылетом `reach`

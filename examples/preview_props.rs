@@ -14,7 +14,7 @@ use ui_agent::{
     },
     math::Vec2,
     render::{
-        Canvas,
+        Canvas, Figure,
         scene::{Effects, draw_effects},
     },
     rng::Rng,
@@ -129,10 +129,17 @@ fn render(cells: &[Cell], ui: f32, size: Vec2) -> Result<(Vec<u8>, usize, usize)
             props: &props,
             scribble: &prints,
             flock: &[],
+            flock_rig: None,
         };
         let mut pixels = vec![0u32; cw * ch];
         let mut canvas = Canvas::new(&mut pixels, cw, cw as u32, ch as u32).ok_or("холст")?;
-        draw_effects(&mut canvas, Vec2::ZERO, &effects, ui);
+        draw_effects(
+            &mut canvas,
+            Vec2::ZERO,
+            &effects,
+            ui,
+            &mut Figure::default(),
+        );
         let (left, top) = ((index % COLUMNS) * cw, (index / COLUMNS) * ch);
         for (i, pixel) in pixels.iter().enumerate() {
             let (x, y) = (left + i % cw, top + i / cw);

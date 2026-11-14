@@ -172,11 +172,6 @@ impl Creature {
         &self.pose
     }
 
-    /// Кончик клюва или рыла на экране: сюда несут карточку.
-    pub fn head(&self) -> Vec2 {
-        self.pose.screen(self.pose.muzzle_tip())
-    }
-
     fn standing(kind: RigKind, pos: Vec2, heading: Vec2, scale: f32) -> Self {
         let yaw = yaw_of(heading);
         let build = kind.build();

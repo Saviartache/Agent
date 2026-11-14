@@ -4,8 +4,8 @@ use crate::animation::SheetId;
 use crate::error::AgentError;
 use crate::math::{Rect, Vec2};
 use crate::platform::window::{Layer, LayerId, LayerKind};
-use crate::render::creature;
 use crate::render::scene::{self, CharacterView, PixelRect};
+use crate::render::{Figure, creature};
 use crate::rig::Pose;
 use crate::sim::Sim;
 
@@ -29,6 +29,9 @@ pub(super) struct Stage {
     drawn: Option<Drawn>,
     /// Поза, которой нарисован `Drawn::Creature`.
     pose: Pose,
+    figure: Figure,
+    /// Гусята в окне эффектов.
+    flock: Figure,
 }
 
 impl Stage {
@@ -41,6 +44,8 @@ impl Stage {
             effects,
             drawn: None,
             pose: Pose::default(),
+            figure: Figure::default(),
+            flock: Figure::default(),
         })
     }
 
@@ -86,7 +91,7 @@ impl Stage {
                 };
                 (rect, drawn)
             }
-            CharacterView::Creature { pose, extent } => {
+            CharacterView::Creature { pose, extent, .. } => {
                 let rect = creature::rect(pose, *extent);
                 (rect, Drawn::Creature { rect })
             }
@@ -101,9 +106,9 @@ impl Stage {
         let mut canvas = self.character.canvas(rect.width, rect.height)?;
         match &view {
             CharacterView::Sprite(sprite) => scene::draw_character(&mut canvas, sprite),
-            CharacterView::Creature { pose, .. } => {
+            CharacterView::Creature { pose, skeleton, .. } => {
                 let origin = Vec2::new(rect.x as f32, rect.y as f32);
-                creature::draw(&mut canvas, origin, pose);
+                self.figure.draw(&mut canvas, origin, pose, skeleton);
                 if let Some(screen) = sim.character_clip() {
                     canvas.clear_outside(Rect::new(screen.min - origin, screen.max - origin));
                 }
@@ -128,7 +133,7 @@ impl Stage {
         let rect = scene::enclosing(area);
         let mut canvas = self.effects.canvas(rect.width, rect.height)?;
         let origin = Vec2::new(rect.x as f32, rect.y as f32);
-        scene::draw_effects(&mut canvas, origin, &effects, ui);
+        scene::draw_effects(&mut canvas, origin, &effects, ui, &mut self.flock);
         self.effects
             .present(rect.x, rect.y, rect.width, rect.height, u8::MAX)?;
         if !self.effects.is_visible() {

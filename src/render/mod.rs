@@ -2,16 +2,15 @@
 
 pub mod canvas;
 pub mod creature;
-mod elephant;
-mod goose;
 mod marks;
-mod penguin;
-mod pig;
 pub mod pixel;
 mod props;
 mod puddle;
-mod raccoon;
+mod puppet;
 pub mod scene;
 pub mod shadow;
+mod solid;
 
 pub use canvas::{Canvas, Color, Sprite};
+pub use puppet::{Figure, Puppet};
+pub use solid::Solid;

@@ -28,6 +28,8 @@ fn shown_scale(sim: &Sim) -> f32 {
     }
 }
 
+mod on_screen;
+
 mod pig {
     use super::*;
 

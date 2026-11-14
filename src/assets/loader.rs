@@ -5,6 +5,7 @@ use std::{
     fs::File,
     io::{self, Cursor, Read},
     path::Path,
+    sync::Arc,
 };
 
 use png::{ColorType, Transformations};
@@ -16,10 +17,12 @@ use crate::{
     config::{BehaviorConfig, MotionConfig},
     error::AgentError,
     math::Vec2,
-    rig::RigKind,
+    rig::{RIG_FILE, RigKind, Skeleton},
 };
 
 const MAX_PNG_BYTES: usize = 16 << 20;
+/// Полуширина тела любого вида для расстановки карточки, design px.
+const BODY_HALF_WIDTH: f32 = 16.0;
 const MAX_SIDE: u32 = 4096;
 // 64 МиБ пикселей по 4 байта.
 const MAX_TOTAL_PIXELS: usize = 16 << 20;
@@ -43,8 +46,10 @@ pub struct ActionEntry {
 pub struct Character {
     id: String,
     rig: Option<RigKind>,
+    skeleton: Option<Arc<Skeleton>>,
     scale: f32,
-    frame_size: [u32; 2],
+    /// Кадр спрайтового набора; у тела кадров нет.
+    frame_size: Option<[u32; 2]>,
     sheets: Vec<Sheet>,
     clips: Vec<Clip>,
     actions: Vec<ActionEntry>,
@@ -70,6 +75,31 @@ impl Character {
             RigKind::Penguin => include_str!("../../assets/penguin/agent.json"),
         };
         Self::from_source(manifest, &|_| Err(io::ErrorKind::NotFound.into()))
+    }
+
+    /// Вшитый вид тела: по нему рисуется набор, у которого нет своего `rig.json`.
+    fn builtin_rig(kind: RigKind) -> &'static str {
+        match kind {
+            RigKind::Goose => include_str!("../../assets/goose/rig.json"),
+            RigKind::Pig => include_str!("../../assets/pig/rig.json"),
+            RigKind::Elephant => include_str!("../../assets/elephant/rig.json"),
+            RigKind::Raccoon => include_str!("../../assets/raccoon/rig.json"),
+            RigKind::Penguin => include_str!("../../assets/penguin/rig.json"),
+        }
+    }
+
+    /// Скелет тела: `rig.json` рядом с манифестом, а без файла — вшитый вид.
+    fn load_skeleton(kind: RigKind, read: ReadFile) -> Result<Arc<Skeleton>, AgentError> {
+        let own = match read(RIG_FILE) {
+            Ok(bytes) => Some(String::from_utf8(bytes).map_err(|_| AgentError::Asset {
+                file: RIG_FILE.to_owned(),
+                reason: "не в UTF-8".to_owned(),
+            })?),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+            Err(error) => return Err(error.into()),
+        };
+        let text = own.as_deref().unwrap_or_else(|| Self::builtin_rig(kind));
+        Skeleton::parse(text).map(Arc::new)
     }
 
     fn from_source(text: &str, read: ReadFile) -> Result<Self, AgentError> {
@@ -107,9 +137,14 @@ impl Character {
         let set = ActionSet::resolve(|name| find_action(&actions, name))
             .ok_or_else(|| fail("обязательны действия idle и walk"))?;
 
+        let skeleton = match manifest.kind {
+            Some(kind) => Some(Self::load_skeleton(kind, read)?),
+            None => None,
+        };
         Ok(Self {
             id: manifest.id,
             rig: manifest.kind,
+            skeleton,
             scale: manifest.scale,
             frame_size: manifest.frame_size,
             sheets: sheets.list,
@@ -130,12 +165,20 @@ impl Character {
         self.rig
     }
 
+    /// Скелет тела: по нему оно рисуется. `None` — набор спрайтовый.
+    pub fn skeleton(&self) -> Option<&Arc<Skeleton>> {
+        self.skeleton.as_ref()
+    }
+
     pub fn scale(&self) -> f32 {
         self.scale
     }
 
-    pub fn frame_size(&self) -> [u32; 2] {
+    /// Полуширина персонажа в px набора: от неё карточка держит просвет. У спрайта —
+    /// четверть кадра, у тела — общая для всех видов.
+    pub fn half_width(&self) -> f32 {
         self.frame_size
+            .map_or(BODY_HALF_WIDTH, |[width, _]| width as f32 * 0.25)
     }
 
     pub fn actions(&self) -> &ActionSet {
@@ -286,11 +329,32 @@ fn build_clip(
     sheet: Option<(SheetId, [u32; 2])>,
 ) -> Result<Clip, AgentError> {
     let bad = |reason: String| fail(format!("анимация «{name}»: {reason}"));
-    // У тела листа нет: кадры лишь делят время клипа
-    let (sheet, sheet_size) = sheet.unwrap_or((SheetId(0), [u32::MAX; 2]));
-    let frames = match &animation.frames {
+    if let Some(ms) = animation.duration_ms {
+        // У тела кадров нет: клип — это его длина, жест читает долю времени
+        let whole = Frame {
+            sheet: SheetId(0),
+            rect: [0; 4],
+            duration: seconds(ms),
+            offset: Vec2::ZERO,
+        };
+        return Ok(Clip {
+            name: name.to_owned(),
+            frames: vec![whole],
+            looping: animation.looping,
+            anchor: Vec2::ZERO,
+            markers: Vec::new(),
+        });
+    }
+    let (Some((sheet, sheet_size)), Some(frames), Some([frame_w, frame_h]), Some(anchor)) = (
+        sheet,
+        &animation.frames,
+        manifest.frame_size,
+        manifest.anchor,
+    ) else {
+        return Err(bad("у спрайтовой анимации нет листа или кадров".into()));
+    };
+    let frames = match frames {
         Frames::Grid(grid) => {
-            let [frame_w, frame_h] = manifest.frame_size;
             if grid.count == 0 || grid.count > MAX_FRAMES {
                 return Err(bad("кадров должно быть от 1 до 256".into()));
             }
@@ -365,7 +429,7 @@ fn build_clip(
     }
     markers.sort_by_key(|marker| marker.frame);
 
-    let anchor = animation.anchor.unwrap_or(manifest.anchor);
+    let anchor = animation.anchor.unwrap_or(anchor);
     Ok(Clip {
         name: name.to_owned(),
         frames,
@@ -547,29 +611,81 @@ mod tests {
     }
 
     const RIG: &str = r#"{
-        "id": "t", "rig": "goose", "frame_size": [2, 2], "anchor": [1, 2],
-        "animations": { "a": { "frames": { "count": 2, "duration_ms": 100 } } },
+        "id": "t", "rig": "goose",
+        "animations": { "a": { "duration_ms": 200 } },
         "actions": { "idle": { "animation": "a" }, "walk": { "animation": "a" } }
     }"#;
 
     #[test]
-    fn rig_manifest_needs_no_sheets() {
-        let character = character(RIG, &[]).unwrap();
-        assert_eq!(character.rig(), Some(RigKind::Goose));
-        assert!((character.clip(ClipId(0)).duration() - 0.2).abs() < 1e-6);
+    fn skeleton_comes_from_rig_json_next_to_the_manifest() {
+        // Без своего файла — вшитый вид того же тела
+        let goose = character(RIG, &[]).unwrap();
+        assert!(goose.skeleton().unwrap().bone("wing_l").is_some());
+        let rig = include_bytes!("../../assets/pig/rig.json").to_vec();
+        let with = character(RIG, &[(RIG_FILE, rig)]).unwrap();
+        assert!(with.skeleton().unwrap().bone("wing_l").is_none());
+        assert!(with.skeleton().unwrap().bone("hip_fore_l").is_some());
+        // Битый файл — ошибка, а не тихий откат к вшитому виду
+        let broken = character(RIG, &[(RIG_FILE, b"{".to_vec())]);
+        assert!(matches!(broken, Err(AgentError::Asset { file, .. }) if file == RIG_FILE));
+        // Спрайтовому набору скелет не нужен
+        let files = [("s.png", pack_sheet()), (RIG_FILE, b"{".to_vec())];
+        assert!(character(PACK, &files).unwrap().skeleton().is_none());
+        // У каждого вшитого вида есть тело, голова и точка у морды
+        for kind in RigKind::ALL {
+            let builtin = Character::builtin(kind).unwrap();
+            let skeleton = builtin.skeleton().unwrap();
+            for bone in ["body", "head", "foot_hind_l", "foot_hind_r"] {
+                assert!(skeleton.bone(bone).is_some(), "{kind:?} {bone}");
+            }
+            assert!(skeleton.socket("muzzle").is_some(), "{kind:?}");
+        }
     }
 
     #[test]
-    fn rig_manifest_rejects_file_and_sprite_manifest_requires_it() {
-        let with_file = RIG.replace("\"frames\"", "\"file\": \"a.png\", \"frames\"");
-        assert!(manifest_error(&with_file));
-        let without = BASE.replace("\"file\": \"a.png\", ", "");
-        assert!(manifest_error(&without));
-        let list = RIG.replace(
-            "{ \"count\": 2, \"duration_ms\": 100 }",
-            "[ { \"x\": 0, \"y\": 0, \"w\": 1, \"h\": 1, \"duration_ms\": 50 } ]",
-        );
-        assert!(manifest_error(&list));
+    fn rig_manifest_carries_only_clip_lengths() {
+        let character = character(RIG, &[]).unwrap();
+        assert_eq!(character.rig(), Some(RigKind::Goose));
+        assert!((character.clip(ClipId(0)).duration() - 0.2).abs() < 1e-6);
+        // Просвет до карточки у тела свой, у спрайта — от кадра
+        assert_eq!(character.half_width(), 16.0);
+        let pack = super::test_support::character(PACK, &[("s.png", pack_sheet())]).unwrap();
+        assert_eq!(pack.half_width(), 1.0);
+    }
+
+    #[test]
+    fn body_and_sprite_manifests_do_not_mix() {
+        // Телу не нужны ни лист, ни кадры, ни размер кадра, ни точка опоры, ни события
+        for extra in [
+            r#""file": "a.png", "#,
+            r#""frames": { "count": 2, "duration_ms": 100 }, "#,
+            r#""anchor": [1, 2], "#,
+            r#""events": [ { "frame": 0, "name": "x" } ], "#,
+        ] {
+            let mixed = RIG.replace(r#""duration_ms""#, &format!("{extra}\"duration_ms\""));
+            assert!(manifest_error(&mixed), "{extra}");
+        }
+        assert!(manifest_error(&RIG.replace(
+            r#""rig": "goose","#,
+            r#""rig": "goose", "frame_size": [2, 2],"#
+        )));
+        assert!(manifest_error(&RIG.replace(
+            r#""rig": "goose","#,
+            r#""rig": "goose", "anchor": [1, 2],"#
+        )));
+        assert!(manifest_error(&RIG.replace("200", "0")));
+        assert!(manifest_error(
+            &RIG.replace(r#""duration_ms": 200"#, r#""loop": true"#)
+        ));
+        // Спрайту — наоборот: лист и кадры обязательны, длина клипа берётся из кадров
+        assert!(manifest_error(&BASE.replace("\"file\": \"a.png\", ", "")));
+        assert!(manifest_error(
+            &BASE.replace("\"file\"", "\"duration_ms\": 100, \"file\"")
+        ));
+        assert!(manifest_error(
+            &BASE.replace("\"frame_size\": [2, 2], ", "")
+        ));
+        assert!(manifest_error(&BASE.replace("\"anchor\": [1, 2],", "")));
     }
 
     #[test]

@@ -4,14 +4,17 @@
 //! `cycle` — кадры ходьбы и бега; `mud` — тело в грязи после лужи;
 //! жест — имя встроенного действия (`react`, `sleep`, …);
 //! `antic:поле=число;eyes=crossed;tongue=1;mud=1` — накладка сценки и вид тела по всем сторонам.
-//! Без фильтра рисуется всё.
+//! Без фильтра рисуется всё. Тело рисуется как на рабочем столе, по вшитому скелету вида;
+//! `--rig=<rig.json>` — по скелету из файла: он читается при запуске, правка вида не требует
+//! пересборки. Печатает среднее время кадра.
 
-use std::{error::Error, fs::File, io::BufWriter, path::PathBuf};
+use std::{error::Error, fs, fs::File, io::BufWriter, path::PathBuf, sync::Arc, time::Instant};
 
 use ui_agent::{
+    Character,
     math::Vec2,
-    render::{Canvas, creature},
-    rig::{Antic, Creature, Eyes, Footfall, Gesture, Look, Pose, RigInput, RigKind},
+    render::{Canvas, Figure},
+    rig::{Antic, Creature, Eyes, Footfall, Gesture, Look, Pose, RigInput, RigKind, Skeleton},
     rng::Rng,
 };
 
@@ -23,6 +26,9 @@ const GROUND: Vec2 = Vec2::new(100.0, 165.0);
 const COLUMNS: usize = 8;
 const BACKGROUND: [u32; 3] = [118, 124, 134];
 const DT: f32 = 1.0 / 60.0;
+/// Сторона холста для замера времени кадра и число проходов по всем позам листа.
+const STAGE: usize = 340;
+const TIMED_ROUNDS: usize = 40;
 const SETTLE_SECS: f32 = 1.6;
 const WALK_SPEED: f32 = 70.0;
 const RUN_SPEED: f32 = 230.0;
@@ -252,7 +258,11 @@ fn build(kind: RigKind, filter: Option<&str>) -> Result<Vec<Pose>, String> {
 }
 
 /// RGB-картинка листа и её размеры.
-fn render(cells: &[Pose]) -> Result<(Vec<u8>, usize, usize), Box<dyn Error>> {
+fn render(
+    cells: &[Pose],
+    skeleton: &Arc<Skeleton>,
+) -> Result<(Vec<u8>, usize, usize), Box<dyn Error>> {
+    let mut figure = Figure::default();
     let rows = cells.len().div_ceil(COLUMNS);
     let (width, height) = (COLUMNS * CELL[0], rows * CELL[1]);
     let mut rgb = vec![0u8; width * height * 3];
@@ -262,7 +272,7 @@ fn render(cells: &[Pose]) -> Result<(Vec<u8>, usize, usize), Box<dyn Error>> {
         let mut canvas = Canvas::new(&mut pixels, CELL[0], CELL[0] as u32, CELL[1] as u32)
             .ok_or("холст ячейки")?;
         // Холст следует за телом: оно всегда в точке `GROUND` ячейки
-        creature::draw(&mut canvas, pose.pos - GROUND, pose);
+        figure.draw(&mut canvas, pose.pos - GROUND, pose, skeleton);
         for (i, pixel) in pixels.iter().enumerate() {
             let (x, y) = (left + i % CELL[0], top + i / CELL[0]);
             let alpha = pixel >> 24;
@@ -275,6 +285,24 @@ fn render(cells: &[Pose]) -> Result<(Vec<u8>, usize, usize), Box<dyn Error>> {
     Ok((rgb, width, height))
 }
 
+/// Среднее время отрисовки позы на холсте рабочего стола, мс.
+fn frame_ms(cells: &[Pose], skeleton: &Arc<Skeleton>) -> Result<f64, Box<dyn Error>> {
+    let mut figure = Figure::default();
+    let mut pixels = vec![0u32; STAGE * STAGE];
+    let mut canvas =
+        Canvas::new(&mut pixels, STAGE, STAGE as u32, STAGE as u32).ok_or("холст замера")?;
+    let middle = Vec2::new(STAGE as f32 * 0.5, STAGE as f32 * 0.5);
+    let started = Instant::now();
+    for _ in 0..TIMED_ROUNDS {
+        for pose in cells {
+            canvas.clear();
+            figure.draw(&mut canvas, pose.pos - middle, pose, skeleton);
+        }
+    }
+    let frames = (TIMED_ROUNDS * cells.len()) as f64;
+    Ok(started.elapsed().as_secs_f64() * 1000.0 / frames)
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args = std::env::args().skip(1);
     let kind = args
@@ -282,8 +310,16 @@ fn main() -> Result<(), Box<dyn Error>> {
         .and_then(|name| RigKind::from_name(&name))
         .ok_or("первый аргумент — тело: goose, pig, elephant, raccoon или penguin")?;
     let path: PathBuf = args.next().ok_or("второй аргумент — путь к PNG")?.into();
-    let cells = build(kind, args.next().as_deref())?;
-    let (rgb, width, height) = render(&cells)?;
+    let rest: Vec<String> = args.collect();
+    let filter = rest.iter().find(|arg| !arg.starts_with("--"));
+    let builtin = Character::builtin(kind)?;
+    let skeleton = match rest.iter().find_map(|arg| arg.strip_prefix("--rig=")) {
+        Some(file) => Arc::new(Skeleton::parse(&fs::read_to_string(file)?)?),
+        None => Arc::clone(builtin.skeleton().ok_or("у вшитого набора нет скелета")?),
+    };
+    let cells = build(kind, filter.map(String::as_str))?;
+    let (rgb, width, height) = render(&cells, &skeleton)?;
+    println!("кадр: {:.3} мс", frame_ms(&cells, &skeleton)?);
     let mut encoder = png::Encoder::new(
         BufWriter::new(File::create(&path)?),
         width as u32,

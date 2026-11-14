@@ -2,11 +2,15 @@
 //! а не берётся из листа спрайтов. Чистое ядро: ни ОС, ни часов.
 
 mod creature;
+mod skeleton;
 mod vec3;
 
 pub use creature::{
     Antic, Body, Creature, Ear, Eyes, Footfall, GROUND_SQUASH, Head, Look, NECK_POINTS, Pose,
     RigInput, flatten,
+};
+pub use skeleton::{
+    Bone, Channel, Drive, Joint, Outline, Part, RIG_FILE, Shape, Skeleton, Socket, World, view,
 };
 pub use vec3::{Frame, Vec3};
 

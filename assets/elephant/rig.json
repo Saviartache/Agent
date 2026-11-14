@@ -1,0 +1,99 @@
+{
+  "palette": {
+    "hide": "93A8C2",
+    "ear": "7F95B1",
+    "inner": "E0A4B0",
+    "leg": "7187A3",
+    "nail": "C2CFDE",
+    "tuft": "5B6F8C",
+    "lid": "BCCBDC",
+    "rim": "526582",
+    "mouth": "8E3E4A",
+    "tongue": "E85F7A",
+    "white": "FFFFFF",
+    "ink": "1B1F29",
+    "edge": "B9C0CB"
+  },
+  "outlines": {
+    "hide": { "color": "rim", "width": 0.7 },
+    "white": { "color": "edge", "width": 0.7 }
+  },
+  "controls": ["lids", "eyes_crossed", "eyes_wide", "mouth", "mouth_open", "tongue", "standing"],
+  "bones": [
+    { "name": "root", "ground": true },
+    { "name": "body", "parent": "root", "at": [0, 0, 14], "ground": true },
+    { "name": "head", "parent": "root", "at": [14, 0, 20.5] },
+    { "name": "mouth", "parent": "head", "at": [7.5, 0, -6], "stretch": [1, 0.3333, 1],
+      "drivers": [ { "control": "mouth_open", "stretch": [0, 0.6667, 0] } ] },
+    { "name": "trunk_bend", "parent": "root", "at": [27.85, 0, 17.5] },
+    { "name": "trunk_tip", "parent": "root", "at": [26.7, 0, 5.4] },
+    { "name": "ear_l", "parent": "root", "at": [10, -7, 23.5] },
+    { "name": "ear_r", "parent": "root", "at": [10, 7, 23.5] },
+    { "name": "hip_hind_l", "parent": "body", "at": [-7.7, -5.5, -5.25] },
+    { "name": "hip_hind_r", "parent": "body", "at": [-7.7, 5.5, -5.25] },
+    { "name": "hip_fore_l", "parent": "body", "at": [7.7, -5.5, -5.25] },
+    { "name": "hip_fore_r", "parent": "body", "at": [7.7, 5.5, -5.25] },
+    { "name": "foot_hind_l", "parent": "root", "at": [-7.5, -5, 0] },
+    { "name": "foot_hind_r", "parent": "root", "at": [-7.5, 5, 0] },
+    { "name": "foot_fore_l", "parent": "root", "at": [7.5, -5.6, 0] },
+    { "name": "foot_fore_r", "parent": "root", "at": [7.5, 5.6, 0] }
+  ],
+  "parts": [
+    { "bone": "hip_hind_l", "color": "leg", "rim": "hide", "shape": { "chain": { "through": ["foot_hind_l"], "radii": [3.5, 3.9], "reach": 11 } } },
+    { "bone": "hip_hind_r", "color": "leg", "rim": "hide", "shape": { "chain": { "through": ["foot_hind_r"], "radii": [3.5, 3.9], "reach": 11 } } },
+    { "bone": "hip_fore_l", "color": "leg", "rim": "hide", "shape": { "chain": { "through": ["foot_fore_l"], "radii": [3.5, 3.9], "reach": 11 } } },
+    { "bone": "hip_fore_r", "color": "leg", "rim": "hide", "shape": { "chain": { "through": ["foot_fore_r"], "radii": [3.5, 3.9], "reach": 11 } } },
+
+    { "bone": "foot_hind_l", "color": "nail", "show": ["standing"], "behind": true, "lift": 2.5, "shape": { "ball": { "at": [2.34, -1.755, -1.17], "radius": 1.3 } } },
+    { "bone": "foot_hind_l", "color": "nail", "show": ["standing"], "behind": true, "lift": 2.5, "shape": { "ball": { "at": [2.34, 1.755, -1.17], "radius": 1.3 } } },
+    { "bone": "foot_hind_r", "color": "nail", "show": ["standing"], "behind": true, "lift": 2.5, "shape": { "ball": { "at": [2.34, -1.755, -1.17], "radius": 1.3 } } },
+    { "bone": "foot_hind_r", "color": "nail", "show": ["standing"], "behind": true, "lift": 2.5, "shape": { "ball": { "at": [2.34, 1.755, -1.17], "radius": 1.3 } } },
+    { "bone": "foot_fore_l", "color": "nail", "show": ["standing"], "behind": true, "lift": 2.5, "shape": { "ball": { "at": [2.34, -1.755, -1.17], "radius": 1.3 } } },
+    { "bone": "foot_fore_l", "color": "nail", "show": ["standing"], "behind": true, "lift": 2.5, "shape": { "ball": { "at": [2.34, 1.755, -1.17], "radius": 1.3 } } },
+    { "bone": "foot_fore_r", "color": "nail", "show": ["standing"], "behind": true, "lift": 2.5, "shape": { "ball": { "at": [2.34, -1.755, -1.17], "radius": 1.3 } } },
+    { "bone": "foot_fore_r", "color": "nail", "show": ["standing"], "behind": true, "lift": 2.5, "shape": { "ball": { "at": [2.34, 1.755, -1.17], "radius": 1.3 } } },
+
+    { "bone": "body", "color": "hide", "rim": "hide", "shape": { "ellipsoid": { "radii": [14, 11, 10.5] } } },
+    { "bone": "body", "color": "hide", "rim": "hide", "shape": { "chain": { "from": [9.5, 0, 3.5], "through": ["head"], "radii": [7.5, 7.5] } } },
+    { "bone": "body", "color": "ear", "rim": "hide", "shape": { "capsule": { "from": [-13.3, 0, 3.675], "to": [-16.8, 0, -2.625], "radii": [1.1, 1.1] } } },
+    { "bone": "body", "color": "tuft", "rim": "hide", "shape": { "ball": { "at": [-16.8, 0, -2.625], "radius": 1.7 } } },
+
+    { "bone": "head", "color": "hide", "rim": "hide", "shape": { "ball": { "radius": 10 } } },
+    { "bone": "head", "color": "hide", "rim": "hide", "shape": { "chain": { "from": [8, 0, -3], "through": ["trunk_bend", "trunk_tip"], "radii": [3.3, 1.8], "curve": 8 } } },
+
+    { "bone": "ear_l", "color": "ear", "rim": "hide", "shape": { "ellipsoid": { "at": [0.7, 0.3, 0], "radii": [0.75, 0.42, 0.9] } } },
+    { "bone": "ear_l", "color": "ear", "rim": "hide", "shape": { "ellipsoid": { "at": [0.85, 0.75, 0], "radii": [0.75, 0.65, 0.9] } } },
+    { "bone": "ear_l", "color": "inner", "shape": { "ellipsoid": { "at": [0.62, 0.27, 1], "radii": [0.595, 0.28, 0.9] } } },
+    { "bone": "ear_l", "color": "inner", "shape": { "ellipsoid": { "at": [0.76, 0.68, 1], "radii": [0.595, 0.51, 0.9] } } },
+    { "bone": "ear_r", "color": "ear", "rim": "hide", "shape": { "ellipsoid": { "at": [0.7, 0.3, 0], "radii": [0.75, 0.42, 0.9] } } },
+    { "bone": "ear_r", "color": "ear", "rim": "hide", "shape": { "ellipsoid": { "at": [0.85, 0.75, 0], "radii": [0.75, 0.65, 0.9] } } },
+    { "bone": "ear_r", "color": "inner", "shape": { "ellipsoid": { "at": [0.62, 0.27, 1], "radii": [0.595, 0.28, 0.9] } } },
+    { "bone": "ear_r", "color": "inner", "shape": { "ellipsoid": { "at": [0.76, 0.68, 1], "radii": [0.595, 0.51, 0.9] } } },
+
+    { "bone": "mouth", "color": "mouth", "show": ["mouth"], "facing": [0, 0, 0], "lift": 4, "shape": { "disc": { "axes": [[4.4, 0, 0], [0, 2.7, 0]] } } },
+    { "bone": "head", "color": "tongue", "show": ["tongue"], "lift": 2, "shape": { "capsule": { "from": [7.5, 0, -6], "to": [7.5, 3.5, -9], "radii": [1.5, 1.2] } } },
+
+    { "bone": "head", "color": "white", "rim": "white", "facing": [6.5, -5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "hide": ["lids", "eyes_crossed", "eyes_wide"], "shape": { "ball": { "radius": 3.1 } } },
+    { "bone": "head", "color": "white", "rim": "white", "facing": [6.5, 5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "hide": ["lids", "eyes_crossed", "eyes_wide"], "shape": { "ball": { "radius": 3.1 } } },
+    { "bone": "head", "color": "ink", "facing": [6.5, -5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "hide": ["lids", "eyes_crossed", "eyes_wide"], "shape": { "ball": { "at": [0, 0, 3.1], "radius": 1.4 } } },
+    { "bone": "head", "color": "ink", "facing": [6.5, 5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "hide": ["lids", "eyes_crossed", "eyes_wide"], "shape": { "ball": { "at": [0, 0, 3.1], "radius": 1.4 } } },
+
+    { "bone": "head", "color": "white", "rim": "white", "facing": [6.5, -5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["eyes_wide"], "hide": ["lids", "eyes_crossed"], "shape": { "ball": { "radius": 4.03 } } },
+    { "bone": "head", "color": "white", "rim": "white", "facing": [6.5, 5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["eyes_wide"], "hide": ["lids", "eyes_crossed"], "shape": { "ball": { "radius": 4.03 } } },
+    { "bone": "head", "color": "ink", "facing": [6.5, -5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["eyes_wide"], "hide": ["lids", "eyes_crossed"], "shape": { "ball": { "at": [0, 0, 4.03], "radius": 0.91 } } },
+    { "bone": "head", "color": "ink", "facing": [6.5, 5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["eyes_wide"], "hide": ["lids", "eyes_crossed"], "shape": { "ball": { "at": [0, 0, 4.03], "radius": 0.91 } } },
+
+    { "bone": "head", "color": "lid", "facing": [6.5, -5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["lids"], "shape": { "ball": { "radius": 3.1 } } },
+    { "bone": "head", "color": "lid", "facing": [6.5, 5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["lids"], "shape": { "ball": { "radius": 3.1 } } },
+
+    { "bone": "head", "color": "ink", "facing": [6.5, -5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["eyes_crossed"], "hide": ["lids"], "shape": { "capsule": { "from": [-2, -2, 3.1], "to": [2, 2, 3.1], "radii": [0.6, 0.6] } } },
+    { "bone": "head", "color": "ink", "facing": [6.5, -5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["eyes_crossed"], "hide": ["lids"], "shape": { "capsule": { "from": [-2, 2, 3.1], "to": [2, -2, 3.1], "radii": [0.6, 0.6] } } },
+    { "bone": "head", "color": "ink", "facing": [6.5, 5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["eyes_crossed"], "hide": ["lids"], "shape": { "capsule": { "from": [-2, -2, 3.1], "to": [2, 2, 3.1], "radii": [0.6, 0.6] } } },
+    { "bone": "head", "color": "ink", "facing": [6.5, 5, 3.5], "sink": 0.7, "behind": true, "lift": 3, "show": ["eyes_crossed"], "hide": ["lids"], "shape": { "capsule": { "from": [-2, 2, 3.1], "to": [2, -2, 3.1], "radii": [0.6, 0.6] } } }
+  ],
+  "sockets": [
+    { "name": "muzzle", "bone": "trunk_tip", "at": [0, 0, 0] },
+    { "name": "head_top", "bone": "head", "at": [0, 0, 10] },
+    { "name": "back", "bone": "body", "at": [0, 0, 10.5] }
+  ]
+}

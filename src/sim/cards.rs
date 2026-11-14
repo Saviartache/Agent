@@ -93,7 +93,7 @@ impl Sim {
                 Facing::Left => -1.0,
                 Facing::Right => 1.0,
             };
-            let body_half = self.character.frame_size()[0] as f32 * self.sprite * 0.25;
+            let body_half = self.character.half_width() * self.sprite;
             let reach = (CARD_WIDTH * 0.5 + SIDE_GAP) * ui + body_half;
             (
                 self.body.pos + Vec2::new(side * reach, 0.0),

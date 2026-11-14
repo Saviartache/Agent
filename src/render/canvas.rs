@@ -116,12 +116,28 @@ impl<'a> Canvas<'a> {
     /// на долю `strength` (1 — сплошная заливка).
     /// `phase` — сдвиг сетки, чтобы она была привязана к миру, а не к холсту.
     pub fn pixelate(&mut self, block: u32, phase: [u32; 2], strength: f32) {
+        let within = [0..self.width as usize, 0..self.height as usize];
+        self.pixelate_within(block, phase, strength, within);
+    }
+
+    /// Мозаика только в квадратах, задевающих пиксели `within` (по `x` и `y`): сетка та же,
+    /// что у всего холста, а пустое вокруг тела не перебирается.
+    pub fn pixelate_within(
+        &mut self,
+        block: u32,
+        phase: [u32; 2],
+        strength: f32,
+        within: [Range<usize>; 2],
+    ) {
         let mix = alpha8(strength);
         if mix == 0 {
             return;
         }
+        let touches = |a: &Range<usize>, b: &Range<usize>| a.start < b.end && b.start < a.end;
         self.each_block(block, phase, |canvas, xs, ys, _| {
-            canvas.flatten_block(xs, ys, mix)
+            if touches(&xs, &within[0]) && touches(&ys, &within[1]) {
+                canvas.flatten_block(xs, ys, mix)
+            }
         });
     }
 
@@ -239,7 +255,8 @@ impl<'a> Canvas<'a> {
         (self.pixels[y as usize * self.stride + x as usize] >> 24) as u8
     }
 
-    fn draw(
+    /// Кладёт premultiplied-пиксели `source(x, y)` поверх холста.
+    pub(super) fn draw(
         &mut self,
         xs: Range<usize>,
         ys: Range<usize>,
