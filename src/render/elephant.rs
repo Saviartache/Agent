@@ -39,6 +39,8 @@ const TAIL: [[f32; 2]; 2] = [[0.95, 0.35], [1.2, -0.25]];
 const TAIL_RADIUS: f32 = 1.1;
 const TUFT_RADIUS: f32 = 1.7;
 const SIDES: [f32; 2] = [-1.0, 1.0];
+/// Сторона головы отвёрнута от зрителя настолько — её ухо дальнее.
+const FAR_EAR: f32 = 0.3;
 /// Хобот: точек от корня до кончика, радиусы и как далеко вперёд он выходит из морды
 /// в долях длины, прежде чем свернуть к кончику.
 const TRUNK_POINTS: usize = 9;
@@ -232,8 +234,8 @@ impl Elephant<'_> {
         }
     }
 
-    /// Ухо за головой, когда его шарнир дальше её центра, а за телом — когда тело его
-    /// закрывает; ближнее ложится поверх головы, но под морду, если она ближе. Морда —
+    /// Ухо за головой, когда его центр дальше её центра, а за телом — когда он дальше центра
+    /// тела, тело закрывает шарнир или голова отвёрнута и ухо на дальней стороне; ближнее ложится поверх головы, но под морду, если она ближе. Морда —
     /// хобот, рот и глаза одним слоем.
     fn head_parts(&self) -> [Part; 4] {
         let pose = self.pen.pose;
@@ -242,9 +244,13 @@ impl Elephant<'_> {
         let ear = |i: usize| {
             let ear = pose.ears.map_or_else(Ear::default, |ears| ears[i]);
             let at = ear.center;
-            let layer = if depth(at) >= 0.0 {
+            // Отвёрнутая голова: ухо дальней стороны висит за телом, а не на спине
+            let far = toward_viewer(self.frame.forward) < 0.0
+                && toward_viewer(self.frame.right * SIDES[i]) < -FAR_EAR;
+            let beyond_body = far || toward_viewer(at - pose.body.center) < 0.0;
+            let layer = if !far && depth(at) >= 0.0 {
                 Layer::Front
-            } else if self.pen.behind_body(ear.root) {
+            } else if beyond_body || self.pen.behind_body(ear.root) {
                 Layer::Back
             } else {
                 Layer::Middle
