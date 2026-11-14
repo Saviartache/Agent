@@ -321,16 +321,14 @@ mod tests {
     }
 
     #[test]
-    fn in_profile_far_legs_show_below_the_belly_and_near_ones_over_it() {
+    fn in_profile_legs_grow_from_under_the_belly() {
         use crate::render::creature::test_support::{legs_over_body, one_side_legs};
-        let far = one_side_legs(RigKind::Pig, false);
-        let (pixels, w, _) = render(&far);
-        let (all, over) = legs_over_body(&far, &pixels, w, HOOF);
-        assert!(all > 20 && over == 0, "{all} {over}");
-        let near = one_side_legs(RigKind::Pig, true);
-        let (pixels, w, _) = render(&near);
-        let (all, over) = legs_over_body(&near, &pixels, w, HOOF);
-        assert!(all > 20 && over > 0, "{all} {over}");
+        for near in [false, true] {
+            let pose = one_side_legs(RigKind::Pig, near);
+            let (pixels, w, _) = render(&pose);
+            let (all, over) = legs_over_body(&pose, &pixels, w, HOOF);
+            assert!(all > 20 && over == 0, "{near} {all} {over}");
+        }
     }
 
     #[test]

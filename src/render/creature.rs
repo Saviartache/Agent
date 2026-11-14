@@ -19,6 +19,10 @@ const VIEW_SIN: f32 = 0.5;
 const VIEW_COS: f32 = 0.866;
 /// Тень чуть шире тела.
 const SHADOW_SPREAD: f32 = 1.1;
+/// Точка ноги чуть ниже выхода из тела, доля ноги: по ней видно, закрыт ли выход боком.
+const LEG_EXIT_GAP: f32 = 0.05;
+/// Нога круче этого (косинус от вертикали) стоит и растёт из-под тела.
+const LEG_UPRIGHT: f32 = 0.5;
 
 /// Холст вокруг точки на земле: квадрат со стороной `2 × extent`; в полёте поднимается
 /// за телом, тень на земле остаётся в нижней половине.
@@ -159,9 +163,9 @@ impl Pen<'_> {
         silhouette(self.at(center), axes.map(flatten))
     }
 
-    /// Четыре ноги от дальней к ближней. Бедро на дальней от зрителя стороне тела —
-    /// нога за телом и видна только ниже него; на ближней — поверх тела от брюха и, если
-    /// голова ближе, под ней. `hip` — бедро в долях полуосей тела (по ходу, вбок, вниз),
+    /// Четыре ноги от дальней к ближней. Стоящая нога выходит из-под брюха, его закрывает
+    /// бок — она за телом и видна только ниже него; поверх тела (и под головой, если та
+    /// ближе) — только нога, выход которой из тела зритель видит: на боку, на спине. `hip` — бедро в долях полуосей тела (по ходу, вбок, вниз),
     /// `max` — длина ноги, design px.
     pub fn legs(&self, hip: [f32; 3], max: f32) -> [Leg; 4] {
         let (pose, body) = (self.pose, &self.pose.body);
@@ -187,8 +191,11 @@ impl Pen<'_> {
             let sole = hip.lerp(foot, out * (max * pose.scale / reach).min(1.0));
             let depth = toward_viewer(hip - body.center);
             let exit = self.body_exit(hip, sole);
-            // Ступня в теле — ноги не видно, тело её закрывает
-            let (top, layer) = if depth < 0.0 || exit >= 1.0 {
+            // Ступня в теле, нога стоит (бок нависает над ней) или выход закрыт телом
+            let stands = (sole - hip).normalized().z < -LEG_UPRIGHT;
+            let hidden =
+                exit >= 1.0 || stands || self.behind_body(hip.lerp(sole, exit + LEG_EXIT_GAP));
+            let (top, layer) = if depth < 0.0 || hidden {
                 (hip, LegLayer::Back)
             } else if depth < head {
                 (hip.lerp(sole, exit), LegLayer::Middle)
@@ -361,6 +368,28 @@ mod tests {
         assert_eq!(rect.width, (extent * 2.0).ceil() as u32);
         assert_eq!(rect.x, (AT.x - extent).round() as i32);
         assert_eq!(rect.y, (AT.y - extent).round() as i32);
+    }
+
+    #[test]
+    fn standing_legs_grow_from_under_the_body() {
+        for kind in [RigKind::Pig, RigKind::Elephant, RigKind::Raccoon] {
+            for heading in [
+                Vec2::new(1.0, 0.0),
+                Vec2::new(0.7, 0.7),
+                Vec2::new(0.0, 1.0),
+            ] {
+                let pose = pose(kind, heading);
+                let pen = Pen {
+                    origin: Vec2::ZERO,
+                    pose: &pose,
+                };
+                let legs = pen.legs([0.6, 0.45, 0.5], 12.0);
+                assert!(
+                    legs.iter().all(|leg| leg.layer == LegLayer::Back),
+                    "{kind:?} {heading:?}"
+                );
+            }
+        }
     }
 
     #[test]
