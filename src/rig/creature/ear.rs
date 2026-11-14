@@ -1,8 +1,8 @@
-//! Уши-лопухи слоника: плоские эллипсы на шарнире у затылка, изнанкой вперёд. Раскрываются
+//! Уши-лопухи слоника: эллипсы-чаши на шарнире у затылка, изнанкой вперёд. Раскрываются
 //! на ходу, в прыжке и по накладке (`Antic::wings`/`flap`), на пружине отстают от поворота
 //! головы и разгона тела, во сне обвисают, торчком и под землю не уходят.
 
-use std::f32::consts::TAU;
+use std::f32::consts::{FRAC_PI_2, TAU};
 
 use super::pose::Ear;
 use crate::rig::vec3::{Frame, Vec3};
@@ -45,6 +45,9 @@ const INERTIA: f32 = 0.0015;
 /// Дальше этого пружина ухо не уводит, рад.
 const MAX_LAG: f32 = 0.6;
 const SIDES: [f32; 2] = [-1.0, 1.0];
+/// Лопух — чаша: изнанка смотрит к морде на столько больше его плоскости, но не дальше
+/// прямо вперёд, рад.
+const CUP: f32 = 0.45;
 
 /// Насколько уши раскрыты, 0…1: `stride` — разница высот задних ступней, `hop` —
 /// прыжок, оба design px; `wings` и `flap` — накладка.
@@ -98,9 +101,12 @@ impl Flaps {
             let (sin, cos) = self.open[i].sin_cos();
             // Угол от прижатого назад; за прямым ухо загибается к морде
             let blade = side * sin - head.forward * cos;
+            // Чаша раскрыта к морде сильнее плоскости: в профиль видна серая спинка
+            let open = self.open[i];
+            let (sin, cos) = (open + CUP).min(FRAC_PI_2).max(open).sin_cos();
+            let cup = side * sin - head.forward * cos;
+            let inner = hang(cup, head.up).cross(cup) * SIDES[i];
             let hang = hang(blade, head.up);
-            // Изнанка смотрит вперёд: до прямого угла — чуть наружу, за ним — к морде
-            let inner = hang.cross(blade) * SIDES[i];
             let [x, y, z] = shape.root;
             let z = z - shape.slump * tuck.clamp(0.0, 1.0);
             let root = center + (side * x + head.forward * y + head.up * z) * radius;
@@ -220,7 +226,6 @@ mod tests {
             calm.inner.dot(head.right) > 0.2,
             "в покое — чашей к морде, наружной стороной вбок"
         );
-        assert!(calm.axes[0].dot(calm.inner).abs() < 1e-4);
         let asleep = place(SHAPE.open[0], 1.0);
         assert!(asleep.root.z < calm.root.z - 2.0, "во сне обвисают");
     }

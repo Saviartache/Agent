@@ -191,17 +191,17 @@ impl Elephant<'_> {
         let face = toward_viewer(self.on_head([0.0, EYE_AT[1], EYE_AT[2]], 1.0));
         let ear = |i: usize| {
             let ear = pose.ears.map_or_else(Ear::default, |ears| ears[i]);
-            let root = ear.root;
-            let layer = if depth(root) >= 0.0 {
+            let at = ear.center;
+            let layer = if depth(at) >= 0.0 {
                 Layer::Front
-            } else if self.pen.behind_body(ear.center) {
+            } else if self.pen.behind_body(ear.root) {
                 Layer::Back
             } else {
                 Layer::Middle
             };
             Part {
                 layer,
-                depth: depth(root),
+                depth: depth(at),
                 kind: PartKind::Ear(i),
             }
         };
@@ -390,8 +390,9 @@ mod tests {
             let ears = elephant.ears.unwrap();
             let share = ears.map(|ear| ears::inner_share(&pen, &ear));
             for (ear, share) in ears.iter().zip(share) {
+                let plate = ear.axes[0].cross(ear.axes[1]).normalized();
                 // Повёрнутое к зрителю ухо — розовое с каймой, а не серое с розовой щелью
-                if toward_viewer(ear.inner) > 0.5 {
+                if toward_viewer(ear.inner) > 0.5 && toward_viewer(plate).abs() > 0.5 {
                     assert!(share > 0.2, "{step} {share}");
                 }
                 if toward_viewer(ear.inner) < 0.1 {

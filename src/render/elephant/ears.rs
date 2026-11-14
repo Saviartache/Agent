@@ -1,9 +1,8 @@
 //! Ухо-лопух из двух долей: от шарнира у затылка оно расширяется и закругляется, нижняя
-//! доля длиннее. Ухо плоское: наружная сторона чуть темнее тела, изнанка — розовая в серой
-//! кайме той же плоскости; к ребру они сужаются вместе, а с ребра ухо — серая лопатка.
+//! доля длиннее. Наружная сторона чуть темнее тела, изнанка — розовая в серой кайме той же
+//! плоскости и видна, пока чаша уха раскрыта к зрителю; к ребру они сужаются вместе.
 
 use super::EAR;
-use crate::math::Vec2;
 use crate::render::creature::{Pen, toward_viewer};
 use crate::render::shadow::Oval;
 use crate::render::{Canvas, Color};
@@ -19,7 +18,7 @@ const RIM: f32 = 1.4;
 /// Изнанка сдвинута к шарниру на долю каймы: снаружи кайма шире.
 const RIM_SHIFT: f32 = 1.0;
 /// Изнанка видна спереди: проступает, пока нормаль поворачивается к зрителю от и до.
-const INNER_FACING: [f32; 2] = [0.15, 0.3];
+const INNER_FACING: [f32; 2] = [0.1, 0.6];
 
 pub(super) fn draw(canvas: &mut Canvas, pen: &Pen, ear: &Ear) {
     let lobes = lobes(pen, ear);
@@ -41,9 +40,11 @@ fn lobes(pen: &Pen, ear: &Ear) -> [[Oval; 2]; 2] {
         let oval = lobe(pen, ear, shape);
         let k = facing * ramp(oval.radii.y, [EDGE * s, EDGE * s + rim]);
         let inward = (hinge - oval.center).normalized() * (rim * RIM_SHIFT * k);
+        // Кайма в плоскости уха: поперёк сужается вместе с ним
+        let shrink = (1.0 - rim / oval.radii.x.max(oval.radii.y)).max(0.0);
         let inner = Oval {
             center: oval.center + inward,
-            radii: Vec2::new(oval.radii.x - rim, oval.radii.y - rim) * k,
+            radii: oval.radii * (shrink * k),
             rotation: oval.rotation,
         };
         [oval, inner]
